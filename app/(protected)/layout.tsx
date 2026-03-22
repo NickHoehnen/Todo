@@ -8,7 +8,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 
 export default function ProtectedLayout(
   { children }:
-  { children: React.ReactElement}
+  { children: React.ReactNode}
 ) {
   const [currentPage, setCurrentPage] = useState('Home');
 
