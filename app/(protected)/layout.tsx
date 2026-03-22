@@ -6,10 +6,13 @@ import Home from '@mui/icons-material/Home';
 import CalendarMonth from '@mui/icons-material/CalendarMonth';
 import SettingsIcon from '@mui/icons-material/Settings';
 
-export default function ProtectedLayout(
-  { children }:
-  { children: React.ReactNode}
-) {
+import { ReactNode } from "react";
+
+export default function Layout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const [currentPage, setCurrentPage] = useState('Home');
 
   return (
