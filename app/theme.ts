@@ -47,7 +47,7 @@ export const getTheme = (mode: PaletteMode) =>
     },
 
     typography: {
-      fontFamily: `"Roboto", "Inter", "Helvetica", "Arial", sans-serif`,
+      fontFamily: 'var(--font-geist-sans), Roboto, Arial, sans-serif',
       h1: { fontWeight: 700 },
       h2: { fontWeight: 700 },
       h3: { fontWeight: 600 },

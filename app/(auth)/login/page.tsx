@@ -1,114 +1,141 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-//import { signInWithEmailAndPassword } from "firebase/auth";
-//import { auth } from "@/lib/firebase"; // adjust path as needed
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 import {
   Box,
   Button,
   TextField,
   Typography,
-  Paper,
+  Alert,
+  CircularProgress,
 } from "@mui/material";
+import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  // Unified form state
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [errorMsg, setErrorMsg] = useState("");
-  const [loggingIn, setLoggingIn] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    // Clear field-specific error when user types
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
+  };
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-
-    if (!email.trim()) {
+    if (!formData.email.trim()) {
       newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = "Enter a valid email";
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = "Enter a valid email address";
     }
 
-    if (!password) {
+    if (!formData.password) {
       newErrors.password = "Password is required";
     }
 
     return newErrors;
   };
 
-  const handleLogin = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setErrorMsg("");
 
-    // Validate and set errors first
     const validationErrors = validate();
-    setErrors(validationErrors);
-    if(Object.keys(validationErrors).length > 0) return;
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
 
-    // No errors, attempt sign in
+    setLoading(true);
     try {
-      setLoggingIn(true);
-      //await signInWithEmailAndPassword(auth, email, password);
+      await signInWithEmailAndPassword(auth, formData.email, formData.password);
       router.push("/dashboard");
     } catch (err: any) {
-      setErrorMsg(err.message || "Login failed");
-      setLoggingIn(false);
+      // Friendly messages for common Firebase Auth errors
+      switch (err.code) {
+        case "auth/invalid-credential":
+          setErrorMsg("Invalid email or password. Please try again.");
+          break;
+        case "auth/user-not-found":
+          setErrorMsg("No account found with this email.");
+          break;
+        case "auth/too-many-requests":
+          setErrorMsg("Too many failed attempts. Please try again later.");
+          break;
+        default:
+          setErrorMsg("An error occurred during login. Please try again.");
+      }
+      setLoading(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    handleLogin();
-  }
-
   return (
-    <Box component="form" onSubmit={handleSubmit}>
-      <Typography variant="h5" mb={2} px={.5} textAlign="left">
+    <Box component="form" onSubmit={handleSubmit} noValidate>
+      <Typography variant="h5" mb={2} fontWeight="bold">
         Login
       </Typography>
 
       <TextField
         fullWidth
         label="Email"
+        name="email"
         type="email"
         variant="filled"
         margin="normal"
+        value={formData.email}
+        onChange={handleChange}
         error={!!errors.email}
         helperText={errors.email}
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
       />
 
       <TextField
         fullWidth
         label="Password"
+        name="password"
         type="password"
         variant="filled"
         margin="normal"
+        value={formData.password}
+        onChange={handleChange}
         error={!!errors.password}
         helperText={errors.password}
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
       />
 
       {errorMsg && (
-        <Typography color="error" mt={1} fontSize={14}>
+        <Alert severity="error" sx={{ mt: 2 }}>
           {errorMsg}
-        </Typography>
+        </Alert>
       )}
 
       <Button
         fullWidth
         variant="contained"
-        sx={{ mt: 3 }}
+        size="large"
+        sx={{ mt: 3, py: 1.5 }}
         type="submit"
+        disabled={loading}
+        startIcon={loading && <CircularProgress size={20} color="inherit" />}
       >
-        {loggingIn ? "Logging in..." : "LogIn"}
+        {loading ? "Logging in..." : "Login"}
       </Button>
+
+      <Link href='/signup'>
+        <Typography color="primary" align="center" mt={2}>Don't have an account? Sign up</Typography>
+      </Link>
     </Box>
   );
 }

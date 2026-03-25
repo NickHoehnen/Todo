@@ -12,12 +12,12 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: '#0f172a',
     icons: [
       {
-        src: '/icon-192x192.png', // You'll need to drop some icon images in your public folder!
+        src: '/appIcon.png', // You'll need to drop some icon images in your public folder!
         sizes: '192x192',
         type: 'image/png',
       },
       {
-        src: '/icon-512x512.png',
+        src: '/appIcon.png',
         sizes: '512x512',
         type: 'image/png',
       },

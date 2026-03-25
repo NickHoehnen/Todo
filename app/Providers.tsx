@@ -5,11 +5,10 @@ import { useMemo, useState, useEffect } from "react";
 import { getTheme } from "./theme";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
-  // We default to "dark" for the initial Server-Side Render
   const [mode, setMode] = useState<"light" | "dark">("dark");
 
   useEffect(() => {
-    // Once we are on the client, check for saved preferences
+    // 2. This ONLY runs on the client
     const saved = localStorage.getItem("theme-mode") as "light" | "dark" | null;
     if (saved) {
       setMode(saved);
@@ -19,12 +18,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Update storage when mode changes
   useEffect(() => {
-    // Only update local storage if it's different from what's currently there
-    const currentSaved = localStorage.getItem("theme-mode");
-    if (currentSaved !== mode) {
-      localStorage.setItem("theme-mode", mode);
-    }
+    localStorage.setItem("theme-mode", mode);
   }, [mode]);
 
   const theme = useMemo(() => getTheme(mode), [mode]);
