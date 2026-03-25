@@ -52,42 +52,44 @@ export default function Layout({ children }: { children: ReactNode }) {
       {/* Navigation area */}
       <Box sx={{ pb: 'calc(env(safe-area-inset-bottom)/2)'}}>
         <BottomNavigation
-          //showLabels
           value={rootPath}
-          sx={(theme) => ({
+          sx={{
             width: '100%',
             flexShrink: 0,
-            height: `4rem`,
+            height: '4rem',
             borderTop: 1,
             borderColor: 'divider',
             bgcolor: 'background.default',
             justifyContent: 'space-around'
-          })}
+          }}
         >
-          {/* <BottomNavigationAction
-            label="Calendar"
-            value="/calendar"
-            icon={<CalendarMonth />}
-            component={Link}
-            href="/calendar"
-          />
-          <BottomNavigationAction
-            label="Home"
-            value="/dashboard"
-            icon={<Home />}
-            component={Link}
-            href="/dashboard"
-          />
-          <BottomNavigationAction
-            label="Settings"
-            value="/settings"
-            icon={<SettingsIcon />}
-            component={Link}
-            href="/settings"
-          /> */}
-          <Box component={Link} href='calendar' sx={{ px: '1rem', display: 'flex', alignItems: 'center'}}><CalendarMonth color={rootPath === '/calendar' ? 'primary' : 'action'} /></Box>
-          <Box component={Link} href='dashboard' sx={{ px: '1rem', display: 'flex', alignItems: 'center'}}><Home fontSize="large" color={rootPath === '/dashboard' ? 'primary' : 'action'} /></Box>
-          <Box component={Link} href='settings' sx={{ px: '1rem', display: 'flex', alignItems: 'center'}}><SettingsIcon color={rootPath === '/settings' ? 'primary' : 'action'} /></Box>
+          {/* Wrap in ButtonBase for the ripple effect and use absolute paths */}
+          <ButtonBase 
+            component={Link} 
+            href='/calendar' 
+            aria-label="Calendar"
+            sx={{ px: '1rem', display: 'flex', flexGrow: 1, alignItems: 'center', color: 'inherit', textDecoration: 'none' }}
+          >
+            <CalendarMonth color={rootPath === '/calendar' ? 'primary' : 'action'} />
+          </ButtonBase>
+
+          <ButtonBase 
+            component={Link} 
+            href='/dashboard' 
+            aria-label="Dashboard"
+            sx={{ px: '1rem', display: 'flex', flexGrow: 1, alignItems: 'center', color: 'inherit', textDecoration: 'none' }}
+          >
+            <Home fontSize="large" color={rootPath === '/dashboard' ? 'primary' : 'action'} />
+          </ButtonBase>
+
+          <ButtonBase 
+            component={Link} 
+            href='/settings' 
+            aria-label="Settings"
+            sx={{ px: '1rem', display: 'flex', flexGrow: 1, alignItems: 'center', color: 'inherit', textDecoration: 'none' }}
+          >
+            <SettingsIcon color={rootPath === '/settings' ? 'primary' : 'action'} />
+          </ButtonBase>
         </BottomNavigation>
       </Box>
     </Box>
