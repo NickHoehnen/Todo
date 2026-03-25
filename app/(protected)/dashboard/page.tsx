@@ -1,11 +1,12 @@
 'use client'
 
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from "@mui/material";
+import { Avatar, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, List, ListItem, ListItemAvatar, ListItemText, Stack, TextField, Typography } from "@mui/material";
 import { collection, onSnapshot, query, where, addDoc, Timestamp } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { db, auth } from "@/lib/firebase";
 import { Todo } from "@/types/todo";
 import { onAuthStateChanged } from "firebase/auth";
+import { Delete, MoreHoriz, Person } from "@mui/icons-material";
 
 export default function Dashboard() {
   const [todos, setTodos] = useState<Array<Todo>>([]);
@@ -17,26 +18,45 @@ export default function Dashboard() {
   const [dueDateString, setDueDateString] = useState("");
 
   useEffect(() => {
-    // Listen for auth state to handle page refreshes correctly
+    let unsubscribeSnap: () => void;
+
     const authUnsubscribe = onAuthStateChanged(auth, (user) => {
-      if (!user) return;
+      // 1. If there's an existing Firestore listener from a previous user, kill it
+      if (unsubscribeSnap) {
+        unsubscribeSnap();
+      }
 
-      const q = query(
-        collection(db, "todos"), 
-        where("assignedTo", "array-contains", user.uid)
-      );
+      if (user) {
+        const q = query(
+          collection(db, "todos"), 
+          where("assignedTo", "array-contains", user.uid)
+        );
 
-      const unsubscribeSnap = onSnapshot(q, (snapshot) => {
-        const todosData = snapshot.docs.map((doc) => ({
-          ...doc.data(),
-        } as Todo));
-        setTodos(todosData);
-      });
-
-      return () => unsubscribeSnap();
+        // 2. Assign the listener to our variable so we can clean it up later
+        unsubscribeSnap = onSnapshot(q, (snapshot) => {
+          const todosData = snapshot.docs.map((doc) => ({
+            ...doc.data(),
+            id: doc.id, // Good practice to keep the doc ID
+          } as Todo));
+          setTodos(todosData);
+        }, (error) => {
+          // 3. Gracefully handle the permission error during logout
+          if (error.code === 'permission-denied') {
+            console.warn("Firestore listener silenced during logout.");
+          } else {
+            console.error("Firestore error:", error);
+          }
+        });
+      } else {
+        // 4. If user logged out, clear the local state
+        setTodos([]);
+      }
     });
 
-    return () => authUnsubscribe();
+    return () => {
+      authUnsubscribe();
+      if (unsubscribeSnap) unsubscribeSnap();
+    };
   }, []);
 
   const handleAddTask = async (e: React.FormEvent) => {
@@ -48,7 +68,8 @@ export default function Dashboard() {
       // Convert the HTML date string (YYYY-MM-DD) to a Firestore Timestamp
       const dateValue = new Date(dueDateString);
       
-      const newTodo: Todo = {
+      // Create the new todo doc. Let firebase create the id
+      const newTodo: Omit<Todo, 'id'> = {
         task: taskTitle,
         assignedTo: [auth.currentUser.uid],
         dueDate: Timestamp.fromDate(dateValue),
@@ -76,19 +97,27 @@ export default function Dashboard() {
         Create Task
       </Button>
 
-      <Stack spacing={2}>
+      <Stack spacing={2} sx={{ width: { xs: '100%', md: '80%' }}}>
         {todos.map((todo, i) => (
-          <Box key={i} sx={{ p: 2, border: '1px solid #ccc', width: '22rem', borderRadius: '8px' }}>
-            <Typography variant="h6">{todo.task}</Typography>
-            <Typography variant="body2" color="text.secondary">
-              Due: {todo.dueDate.toDate().toLocaleDateString()}
-            </Typography>
-            {todo.dateCompleted && (
-              <Typography variant="caption" color="success.main">
-                Completed: {todo.dateCompleted.toDate().toLocaleDateString()}
-              </Typography>
-            )}
-          </Box>
+          <ListItem 
+            key={i} sx={{ 
+              p: 2, 
+              width: '100%',
+              border: 2,
+              borderRadius: 2,
+              borderColor: 'divider'
+            }}
+            secondaryAction={
+              <IconButton><MoreHoriz /></IconButton>
+            }
+          >
+            <ListItemAvatar>
+              <Avatar>
+                <Person />
+              </Avatar>
+            </ListItemAvatar>
+            <ListItemText primary={todo.task} secondary={todo.dueDate.toDate().toDateString()} />
+          </ListItem>
         ))}
       </Stack>
 
@@ -102,15 +131,16 @@ export default function Dashboard() {
                 label="Task Description" 
                 value={taskTitle}
                 onChange={(e) => setTaskTitle(e.target.value)}
+                variant="standard"
                 required
               />
               <TextField 
                 fullWidth
                 type="date"
                 label="Due Date" 
-                InputLabelProps={{ shrink: true }}
                 value={dueDateString}
                 onChange={(e) => setDueDateString(e.target.value)}
+                variant="standard"
                 required
               />
             </Stack>

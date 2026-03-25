@@ -1,6 +1,6 @@
 'use client'
 
-import { BottomNavigation, BottomNavigationAction, Box, ButtonBase, CircularProgress, Container, Paper, Typography } from "@mui/material"
+import { BottomNavigation, BottomNavigationAction, Box, ButtonBase, CircularProgress, Collapse, Container, Grow, Paper, Typography } from "@mui/material"
 import { usePathname, useRouter } from "next/navigation" // Import this
 import Home from '@mui/icons-material/Home';
 import CalendarMonth from '@mui/icons-material/CalendarMonth';
@@ -46,51 +46,46 @@ export default function Layout({ children }: { children: ReactNode }) {
           bgcolor: 'background.paper'
         }}
       >
-        <Container>{children}</Container>
+        {children}
       </Box>
 
       {/* Navigation area */}
-      <Box sx={{ pb: 'calc(env(safe-area-inset-bottom)/2)'}}>
-        <BottomNavigation
-          value={rootPath}
+      <Box sx={{ pb: 'calc(env(safe-area-inset-bottom)/2)', bgcolor: 'background.default' }}>
+        <Box 
           sx={{
             width: '100%',
-            flexShrink: 0,
             height: '4rem',
             borderTop: 1,
             borderColor: 'divider',
+            display: 'flex',
+            justifyContent: 'space-around',
+            alignItems: 'center',
             bgcolor: 'background.default',
-            justifyContent: 'space-around'
           }}
         >
-          {/* Wrap in ButtonBase for the ripple effect and use absolute paths */}
-          <ButtonBase 
-            component={Link} 
-            href='/calendar' 
-            aria-label="Calendar"
-            sx={{ px: '1rem', display: 'flex', flexGrow: 1, alignItems: 'center', color: 'inherit', textDecoration: 'none' }}
-          >
-            <CalendarMonth color={rootPath === '/calendar' ? 'primary' : 'action'} />
-          </ButtonBase>
-
-          <ButtonBase 
-            component={Link} 
-            href='/dashboard' 
-            aria-label="Dashboard"
-            sx={{ px: '1rem', display: 'flex', flexGrow: 1, alignItems: 'center', color: 'inherit', textDecoration: 'none' }}
-          >
-            <Home fontSize="large" color={rootPath === '/dashboard' ? 'primary' : 'action'} />
-          </ButtonBase>
-
-          <ButtonBase 
-            component={Link} 
-            href='/settings' 
-            aria-label="Settings"
-            sx={{ px: '1rem', display: 'flex', flexGrow: 1, alignItems: 'center', color: 'inherit', textDecoration: 'none' }}
-          >
-            <SettingsIcon color={rootPath === '/settings' ? 'primary' : 'action'} />
-          </ButtonBase>
-        </BottomNavigation>
+          {[
+            { href: '/calendar', label: 'Calendar', icon: <CalendarMonth color={rootPath === '/calendar' ? 'primary' : 'action'} /> },
+            { href: '/dashboard', label: 'Dashboard', icon: <Home fontSize="large" color={rootPath === '/dashboard' ? 'primary' : 'action'} /> },
+            { href: '/settings', label: 'Settings', icon: <SettingsIcon color={rootPath === '/settings' ? 'primary' : 'action'} /> },
+          ].map((item, index) => (
+            <Grow
+              key={item.href} 
+              in={!loading} 
+              style={{ transformOrigin: '0 0 0' }}
+              timeout={(index + 1) * 300} // This creates the "one-by-one" effect
+              appear
+            >
+              <ButtonBase 
+                component={Link} 
+                href={item.href} 
+                aria-label={item.label}
+                sx={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', color: 'inherit' }}
+              >
+                {item.icon}
+              </ButtonBase>
+            </Grow>
+          ))}
+        </Box>
       </Box>
     </Box>
   );

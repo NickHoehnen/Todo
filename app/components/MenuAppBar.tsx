@@ -1,26 +1,30 @@
+'use client'
+
 import * as React from 'react';
-import AppBar from '@mui/material/AppBar';
-import Box from '@mui/material/Box';
-import Toolbar from '@mui/material/Toolbar';
-import Typography from '@mui/material/Typography';
-import IconButton from '@mui/material/IconButton';
+import { AppBar, Box, Toolbar, Typography, IconButton, MenuItem, Menu } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import AccountCircle from '@mui/icons-material/AccountCircle';
-import Switch from '@mui/material/Switch';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import FormGroup from '@mui/material/FormGroup';
-import MenuItem from '@mui/material/MenuItem';
-import Menu from '@mui/material/Menu';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
+import { signOut } from 'firebase/auth';
+import { auth } from '@/lib/firebase'; // Adjust this path to your firebase config
 
 export default function MenuAppBar() {
-  const [auth, setAuth] = React.useState(true);
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  const { user } = useAuth();
   const pathname = usePathname();
-  console.log(pathname)
+  const router = useRouter();
 
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setAuth(event.target.checked);
+  // Handle Logout Logic
+  const handleLogout = async () => {
+    try {
+      setAnchorEl(null);
+      router.push('/login')
+      await signOut(auth);
+    } catch (error) {
+      console.error("Logout Error:", error);
+    }
   };
 
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
@@ -33,21 +37,17 @@ export default function MenuAppBar() {
 
   return (
     <Box sx={{ flexGrow: 0 }}>
-      <AppBar position="static">
+      <AppBar position="static" sx={{ bgcolor: 'background.default', borderBottom: 1, borderColor: 'divider', color: 'text.primary', boxShadow: 'none' }}>
         <Toolbar>
-          <IconButton
-            size="large"
-            edge="start"
-            color="inherit"
-            aria-label="menu"
-            sx={{ mr: 2 }}
-          >
+          <IconButton size="large" edge="start" color="inherit" aria-label="menu" sx={{ mr: 2 }}>
             <MenuIcon />
           </IconButton>
+          
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Photos
+            {pathname === '/' ? 'Home' : pathname.charAt(1).toUpperCase() + pathname.slice(2)}
           </Typography>
-          {auth && (
+
+          {user && (
             <div>
               <IconButton
                 size="large"
@@ -62,20 +62,16 @@ export default function MenuAppBar() {
               <Menu
                 id="menu-appbar"
                 anchorEl={anchorEl}
-                anchorOrigin={{
-                  vertical: 'top',
-                  horizontal: 'right',
-                }}
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
                 keepMounted
-                transformOrigin={{
-                  vertical: 'top',
-                  horizontal: 'right',
-                }}
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
                 open={Boolean(anchorEl)}
                 onClose={handleClose}
               >
-                <MenuItem onClick={handleClose}>Profile</MenuItem>
+                <MenuItem onClick={handleClose} component={Link} href='/profile'>Profile</MenuItem>
                 <MenuItem onClick={handleClose}>My account</MenuItem>
+                {/* Logout Trigger */}
+                <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>Logout</MenuItem>
               </Menu>
             </div>
           )}
