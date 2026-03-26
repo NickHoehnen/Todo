@@ -43,7 +43,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           overflowY: 'auto', 
           WebkitOverflowScrolling: 'touch', 
           py: 1,
-          bgcolor: 'background.paper'
+          bgcolor: 'background.paper',
         }}
       >
         {children}

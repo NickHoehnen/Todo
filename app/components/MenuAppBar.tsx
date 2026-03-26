@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase'; // Adjust this path to your firebase config
+import { Delete } from '@mui/icons-material';
 
 export default function MenuAppBar() {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
@@ -68,6 +69,7 @@ export default function MenuAppBar() {
                 open={Boolean(anchorEl)}
                 onClose={handleClose}
               >
+                <Typography sx={{ display: 'fixed', px: 2, mb: 1}}>{auth.currentUser?.email}</Typography>
                 <MenuItem onClick={handleClose} component={Link} href='/profile'>Profile</MenuItem>
                 <MenuItem onClick={handleClose}>My account</MenuItem>
                 {/* Logout Trigger */}

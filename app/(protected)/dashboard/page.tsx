@@ -1,19 +1,56 @@
 'use client'
 
-import { Avatar, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, List, ListItem, ListItemAvatar, ListItemText, Stack, TextField, Typography } from "@mui/material";
+import { Avatar, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, List, ListItem, ListItemAvatar, ListItemText, Stack, TextField, Typography, InputAdornment, ButtonBase, useMediaQuery } from "@mui/material";
 import { collection, onSnapshot, query, where, addDoc, Timestamp } from "firebase/firestore";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { db, auth } from "@/lib/firebase";
 import { Todo } from "@/types/todo";
 import { onAuthStateChanged } from "firebase/auth";
-import { Delete, MoreHoriz, Person } from "@mui/icons-material";
+import { Add, Clear, MoreHoriz, Person, Search } from "@mui/icons-material";
+import { useSearchParams, usePathname, useRouter } from "next/navigation";
+import { useTheme } from "@mui/material/styles";
 
 export default function Dashboard() {
   const [todos, setTodos] = useState<Array<Todo>>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [addingTask, setAddingTask] = useState(false);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
-  // Form State
+  // --- Search Logic ---
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const { replace } = useRouter();
+
+  // Local state for the input field
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || "");
+
+  useEffect(() => {
+    // Optimization: Don't sync if the state already matches the URL
+    const currentQuery = searchParams.get('q') || "";
+    if (searchTerm === currentQuery) return;
+
+    const delayDebounceFn = setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (searchTerm) {
+        params.set('q', searchTerm);
+      } else {
+        params.delete('q');
+      }
+      
+      // scroll: false is vital for a smooth list experience
+      replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm, pathname, replace, searchParams]);
+
+  // Filter the list based on the actual URL parameter
+  const filteredTodos = todos.filter((todo) =>
+    todo.task.toLowerCase().includes((searchParams.get('q') || "").toLowerCase())
+  );
+
+  // --- Form State ---
   const [taskTitle, setTaskTitle] = useState("");
   const [dueDateString, setDueDateString] = useState("");
 
@@ -21,10 +58,7 @@ export default function Dashboard() {
     let unsubscribeSnap: () => void;
 
     const authUnsubscribe = onAuthStateChanged(auth, (user) => {
-      // 1. If there's an existing Firestore listener from a previous user, kill it
-      if (unsubscribeSnap) {
-        unsubscribeSnap();
-      }
+      if (unsubscribeSnap) unsubscribeSnap();
 
       if (user) {
         const q = query(
@@ -32,23 +66,18 @@ export default function Dashboard() {
           where("assignedTo", "array-contains", user.uid)
         );
 
-        // 2. Assign the listener to our variable so we can clean it up later
         unsubscribeSnap = onSnapshot(q, (snapshot) => {
           const todosData = snapshot.docs.map((doc) => ({
             ...doc.data(),
-            id: doc.id, // Good practice to keep the doc ID
+            id: doc.id,
           } as Todo));
           setTodos(todosData);
         }, (error) => {
-          // 3. Gracefully handle the permission error during logout
-          if (error.code === 'permission-denied') {
-            console.warn("Firestore listener silenced during logout.");
-          } else {
+          if (error.code !== 'permission-denied') {
             console.error("Firestore error:", error);
           }
         });
       } else {
-        // 4. If user logged out, clear the local state
         setTodos([]);
       }
     });
@@ -65,23 +94,19 @@ export default function Dashboard() {
 
     try {
       setAddingTask(true);
-      // Convert the HTML date string (YYYY-MM-DD) to a Firestore Timestamp
       const dateValue = new Date(dueDateString);
       
-      // Create the new todo doc. Let firebase create the id
       const newTodo: Omit<Todo, 'id'> = {
         task: taskTitle,
         assignedTo: [auth.currentUser.uid],
         dueDate: Timestamp.fromDate(dateValue),
-        dateCompleted: null, // Initial state
+        dateCompleted: null,
       };
 
       await addDoc(collection(db, "todos"), newTodo);
-      
-      // Reset form
       setTaskTitle("");
       setDueDateString("");
-      setDialogOpen(false); // Here so it only closes on success
+      setDialogOpen(false);
     } catch (error) {
       console.error("Error adding task: ", error);
     } finally {
@@ -90,40 +115,80 @@ export default function Dashboard() {
   };
 
   return (
-    <Box sx={{ p: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <Typography variant="h4" sx={{ mb: 4 }}>My Dashboard</Typography>
+    <Box sx={{ p: {xs: 2, md: 5}, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <Typography variant="h4" align="left" sx={{ mb: 4, width: '100%', fontWeight: 'bold' }}>Todo:</Typography>
       
-      <Button variant="contained" onClick={() => setDialogOpen(true)} sx={{ mb: 4 }}>
-        Create Task
-      </Button>
+      <Stack direction="row" spacing={2} sx={{ mb: 4, width: { xs: '100%', md: '80%' } }}>
+        <TextField
+          fullWidth
+          placeholder="Search tasks..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search color="action" />
+              </InputAdornment>
+            ),
+            endAdornment: searchTerm && (
+              <InputAdornment position="end">
+                <IconButton size="small" onClick={() => setSearchTerm('')}>
+                  <Clear fontSize="small" />
+                </IconButton>
+              </InputAdornment>
+            )
+          }}
+        />
+        <Button 
+          variant="contained" 
+          onClick={() => setDialogOpen(true)} 
+          sx={{ px: 3, whiteSpace: 'nowrap', minWidth: isMobile ? '56px' : 'auto' }}
+        >
+          <Add sx={{ mr: isMobile ? 0 : 1 }} />
+          {!isMobile && "Create Task"}
+        </Button>
+      </Stack>
 
+      {/* Todos list */}
       <Stack spacing={2} sx={{ width: { xs: '100%', md: '80%' }}}>
-        {todos.map((todo, i) => (
+        {filteredTodos.map((todo) => (
           <ListItem 
-            key={i} sx={{ 
+            key={todo.id} 
+            sx={{ 
               p: 2, 
               width: '100%',
-              border: 2,
+              border: 1,
               borderRadius: 2,
-              borderColor: 'divider'
+              borderColor: 'divider',
+              bgcolor: 'background.paper',
+              '&:hover': { borderColor: 'primary.main' }
             }}
             secondaryAction={
               <IconButton><MoreHoriz /></IconButton>
             }
           >
             <ListItemAvatar>
-              <Avatar>
-                <Person />
-              </Avatar>
+              <Avatar sx={{ bgcolor: 'primary.light' }}><Person /></Avatar>
             </ListItemAvatar>
-            <ListItemText primary={todo.task} secondary={todo.dueDate.toDate().toDateString()} />
+            <ListItemText 
+              primary={todo.task} 
+              secondary={todo.dueDate.toDate()?.toDateString()} 
+              primaryTypographyProps={{ fontWeight: 'medium' }}
+            />
           </ListItem>
         ))}
+        {filteredTodos.length === 0 && (
+          <Box sx={{ mt: 4, textAlign: 'center' }}>
+            <Typography variant="body1" color="text.secondary">
+              {searchTerm ? `No tasks match "${searchTerm}"` : "No tasks assigned to you yet."}
+            </Typography>
+          </Box>
+        )}
       </Stack>
 
-      <Dialog open={dialogOpen}>
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="xs">
         <DialogTitle>Add New Task</DialogTitle>
-        <Box component="form" onSubmit={handleAddTask} sx={{ p: 1 }}>
+        <Box component="form" onSubmit={handleAddTask}>
           <DialogContent>
             <Stack spacing={3}>
               <TextField 
@@ -131,8 +196,9 @@ export default function Dashboard() {
                 label="Task Description" 
                 value={taskTitle}
                 onChange={(e) => setTaskTitle(e.target.value)}
-                variant="standard"
+                variant="outlined"
                 required
+                autoFocus
               />
               <TextField 
                 fullWidth
@@ -140,14 +206,17 @@ export default function Dashboard() {
                 label="Due Date" 
                 value={dueDateString}
                 onChange={(e) => setDueDateString(e.target.value)}
-                variant="standard"
+                variant="outlined"
                 required
+                InputLabelProps={{ shrink: true }}
               />
             </Stack>
           </DialogContent>
-          <DialogActions>
+          <DialogActions sx={{ p: 3 }}>
             <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button loading={addingTask} type="submit" variant="contained">Save Task</Button>
+            <Button disabled={addingTask} type="submit" variant="contained">
+              {addingTask ? "Saving..." : "Save Task"}
+            </Button>
           </DialogActions>
         </Box>
       </Dialog>
