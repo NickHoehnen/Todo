@@ -5,7 +5,6 @@ import { Typography, CircularProgress, Box } from "@mui/material"
 import { doc, getDoc } from "firebase/firestore"
 import { useEffect, useState, use } from "react" // 1. Import 'use'
 import { db } from "@/lib/firebase"
-import { motion } from "motion/react"
 
 interface TodosPageProps {
   params: Promise<{ id: string }>

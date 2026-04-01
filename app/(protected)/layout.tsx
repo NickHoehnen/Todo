@@ -1,6 +1,6 @@
 'use client'
 
-import { BottomNavigation, BottomNavigationAction, Box, ButtonBase, CircularProgress, Collapse, Container, Grow, IconButton, Paper, Slide, Typography } from "@mui/material"
+import { Box, ButtonBase, CircularProgress, Grow } from "@mui/material"
 import { usePathname, useRouter } from "next/navigation" // Import this
 import Home from '@mui/icons-material/Home';
 import CalendarMonth from '@mui/icons-material/CalendarMonth';
@@ -9,7 +9,6 @@ import { ReactNode, useEffect } from "react";
 import MenuAppBar from "../components/MenuAppBar";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { CalendarMonthOutlined, HomeOutlined } from "@mui/icons-material";
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();

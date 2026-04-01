@@ -1,12 +1,12 @@
 'use client'
 
-import { Avatar, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, List, ListItem, ListItemAvatar, ListItemText, Stack, TextField, Typography, InputAdornment, ButtonBase, useMediaQuery, Collapse } from "@mui/material";
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Stack, TextField, Typography, InputAdornment, useMediaQuery, Collapse } from "@mui/material";
 import { collection, onSnapshot, query, where, addDoc, Timestamp } from "firebase/firestore";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { db, auth } from "@/lib/firebase";
 import { Todo } from "@/types/todo";
 import { onAuthStateChanged } from "firebase/auth";
-import { Add, Clear, MoreHoriz, Person, Search } from "@mui/icons-material";
+import { Add, Clear, Search } from "@mui/icons-material";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { useTheme } from "@mui/material/styles";
 import TodoListItem from "@/app/components/TodoListItem";
