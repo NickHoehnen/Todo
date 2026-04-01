@@ -7,4 +7,5 @@ export type Todo = {
   assignedTo: Array<string>,
   dueDate: Timestamp,
   dateCompleted: Timestamp | null,
+  completed: boolean,
 }

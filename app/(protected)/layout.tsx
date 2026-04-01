@@ -1,6 +1,6 @@
 'use client'
 
-import { BottomNavigation, BottomNavigationAction, Box, ButtonBase, CircularProgress, Collapse, Container, Grow, Paper, Typography } from "@mui/material"
+import { BottomNavigation, BottomNavigationAction, Box, ButtonBase, CircularProgress, Collapse, Container, Grow, IconButton, Paper, Slide, Typography } from "@mui/material"
 import { usePathname, useRouter } from "next/navigation" // Import this
 import Home from '@mui/icons-material/Home';
 import CalendarMonth from '@mui/icons-material/CalendarMonth';
@@ -46,7 +46,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           bgcolor: 'background.paper',
         }}
       >
-        {children}
+          {children}
       </Box>
 
       {/* Navigation area */}
@@ -72,14 +72,14 @@ export default function Layout({ children }: { children: ReactNode }) {
               key={item.href} 
               in={!loading} 
               style={{ transformOrigin: '0 0 0' }}
-              timeout={(index + 1) * 300} // This creates the "one-by-one" effect
+              timeout={(index + 1) * 300} // Grow one-by-one
               appear
             >
               <ButtonBase 
                 component={Link} 
                 href={item.href} 
                 aria-label={item.label}
-                sx={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', color: 'inherit' }}
+                sx={{ width: '100%', height: '100%' }}
               >
                 {item.icon}
               </ButtonBase>

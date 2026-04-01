@@ -3,13 +3,13 @@
 import * as React from 'react';
 import { AppBar, Box, Toolbar, Typography, IconButton, MenuItem, Menu } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'; // Added this
 import AccountCircle from '@mui/icons-material/AccountCircle';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { signOut } from 'firebase/auth';
-import { auth } from '@/lib/firebase'; // Adjust this path to your firebase config
-import { Delete } from '@mui/icons-material';
+import { auth } from '@/lib/firebase';
 
 export default function MenuAppBar() {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
@@ -17,11 +17,25 @@ export default function MenuAppBar() {
   const pathname = usePathname();
   const router = useRouter();
 
-  // Handle Logout Logic
+  // Define which paths are "roots" where we show the Hamburger instead of Back
+  const ROOT_PATHS = ['/dashboard', '/login']; 
+  const isRoot = ROOT_PATHS.includes(pathname);
+
+  const PAGE_TITLES: Record<string, string> = {
+    '/dashboard': 'Home',
+    '/calendar': 'My Schedule',
+    '/settings': 'Settings',
+    '/login': 'Welcome Back',
+    '/profile': 'Profile',
+    '/todos': 'Details',
+  };
+
+  const rootPath = `/${pathname.split('/')[1]}`;
+
   const handleLogout = async () => {
     try {
       setAnchorEl(null);
-      router.push('/login')
+      router.push('/login');
       await signOut(auth);
     } catch (error) {
       console.error("Logout Error:", error);
@@ -40,12 +54,21 @@ export default function MenuAppBar() {
     <Box sx={{ flexGrow: 0 }}>
       <AppBar position="static" sx={{ bgcolor: 'background.default', borderBottom: 1, borderColor: 'divider', color: 'text.primary', boxShadow: 'none' }}>
         <Toolbar>
-          <IconButton size="large" edge="start" color="inherit" aria-label="menu" sx={{ mr: 2 }}>
-            <MenuIcon />
+          {/* Back Button */}
+          <IconButton
+            size="large"
+            edge="start"
+            color="inherit"
+            aria-label="navigation"
+            sx={{ mr: 2 }}
+            onClick={() => !isRoot ? router.back() : null} // Goes back if not root
+            disableRipple={!isRoot} // Don't let the ripple transfer to the menu
+          >
+            {isRoot ? <MenuIcon /> : <ArrowBackIcon />}
           </IconButton>
           
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            {pathname === '/' ? 'Home' : pathname.charAt(1).toUpperCase() + pathname.slice(2)}
+            {PAGE_TITLES[pathname] || PAGE_TITLES[rootPath] || 'App'}
           </Typography>
 
           {user && (
@@ -69,10 +92,11 @@ export default function MenuAppBar() {
                 open={Boolean(anchorEl)}
                 onClose={handleClose}
               >
-                <Typography sx={{ display: 'fixed', px: 2, mb: 1}}>{auth.currentUser?.email}</Typography>
+                <Typography sx={{ px: 2, py: 1, borderBottom: 1, borderColor: 'divider', cursor: 'default', userSelect: 'none', fontSize: '0.875rem' }}>
+                    {auth.currentUser?.email}
+                </Typography>
                 <MenuItem onClick={handleClose} component={Link} href='/profile'>Profile</MenuItem>
                 <MenuItem onClick={handleClose}>My account</MenuItem>
-                {/* Logout Trigger */}
                 <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>Logout</MenuItem>
               </Menu>
             </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { Avatar, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, List, ListItem, ListItemAvatar, ListItemText, Stack, TextField, Typography, InputAdornment, ButtonBase, useMediaQuery } from "@mui/material";
+import { Avatar, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, List, ListItem, ListItemAvatar, ListItemText, Stack, TextField, Typography, InputAdornment, ButtonBase, useMediaQuery, Collapse } from "@mui/material";
 import { collection, onSnapshot, query, where, addDoc, Timestamp } from "firebase/firestore";
 import { useEffect, useState, useRef } from "react";
 import { db, auth } from "@/lib/firebase";
@@ -9,6 +9,8 @@ import { onAuthStateChanged } from "firebase/auth";
 import { Add, Clear, MoreHoriz, Person, Search } from "@mui/icons-material";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { useTheme } from "@mui/material/styles";
+import TodoListItem from "@/app/components/TodoListItem";
+import { TransitionGroup } from 'react-transition-group';
 
 export default function Dashboard() {
   const [todos, setTodos] = useState<Array<Todo>>([]);
@@ -101,6 +103,7 @@ export default function Dashboard() {
         assignedTo: [auth.currentUser.uid],
         dueDate: Timestamp.fromDate(dateValue),
         dateCompleted: null,
+        completed: false,
       };
 
       await addDoc(collection(db, "todos"), newTodo);
@@ -115,10 +118,11 @@ export default function Dashboard() {
   };
 
   return (
-    <Box sx={{ p: {xs: 2, md: 5}, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <Typography variant="h4" align="left" sx={{ mb: 4, width: '100%', fontWeight: 'bold' }}>Todo:</Typography>
+    <Box sx={{ px: {xs: 2, md: 5}, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <Typography variant="h4" align="left" sx={{ my: 1, width: '100%', fontWeight: 'bold' }}>Todo:</Typography>
       
-      <Stack direction="row" spacing={2} sx={{ mb: 4, width: { xs: '100%', md: '80%' } }}>
+      {/* Search field and Add button */}
+      <Stack direction="row" spacing={2} sx={{ mb: 2, width: { xs: '100%', md: '80%' } }}>
         <TextField
           fullWidth
           placeholder="Search tasks..."
@@ -139,44 +143,31 @@ export default function Dashboard() {
             )
           }}
         />
-        <Button 
-          variant="contained" 
-          onClick={() => setDialogOpen(true)} 
-          sx={{ px: 3, whiteSpace: 'nowrap', minWidth: isMobile ? '56px' : 'auto' }}
-        >
-          <Add sx={{ mr: isMobile ? 0 : 1 }} />
-          {!isMobile && "Create Task"}
-        </Button>
+        {/* Add button */}
+        <Box sx={{ display: 'flex', p: .5}}>
+          <Button 
+            variant="contained" 
+            onClick={() => setDialogOpen(true)} 
+            sx={{ px: 3, whiteSpace: 'nowrap', minWidth: isMobile ? '56px' : 'auto' }}
+          >
+            <Add sx={{ mr: isMobile ? 0 : 1 }} />
+            {!isMobile && "Create Task"}
+          </Button>
+        </Box>
       </Stack>
 
       {/* Todos list */}
-      <Stack spacing={2} sx={{ width: { xs: '100%', md: '80%' }}}>
-        {filteredTodos.map((todo) => (
-          <ListItem 
-            key={todo.id} 
-            sx={{ 
-              p: 2, 
-              width: '100%',
-              border: 1,
-              borderRadius: 2,
-              borderColor: 'divider',
-              bgcolor: 'background.paper',
-              '&:hover': { borderColor: 'primary.main' }
-            }}
-            secondaryAction={
-              <IconButton><MoreHoriz /></IconButton>
-            }
-          >
-            <ListItemAvatar>
-              <Avatar sx={{ bgcolor: 'primary.light' }}><Person /></Avatar>
-            </ListItemAvatar>
-            <ListItemText 
-              primary={todo.task} 
-              secondary={todo.dueDate.toDate()?.toDateString()} 
-              primaryTypographyProps={{ fontWeight: 'medium' }}
-            />
-          </ListItem>
-        ))}
+      <Box sx={{ width: { xs: '100%', md: '80%' } }}>
+        <TransitionGroup>
+          {filteredTodos.map((todo) => (
+            <Collapse key={todo.id} sx={{ width: '100%' }}> {/* Ensure Collapse is full width */}
+              <Box sx={{ mb: 2, width: '100%' }}> {/* Ensure the wrapper is full width */}
+                <TodoListItem todoMeta={todo} />
+              </Box>
+            </Collapse>
+          ))}
+        </TransitionGroup>
+
         {filteredTodos.length === 0 && (
           <Box sx={{ mt: 4, textAlign: 'center' }}>
             <Typography variant="body1" color="text.secondary">
@@ -184,7 +175,7 @@ export default function Dashboard() {
             </Typography>
           </Box>
         )}
-      </Stack>
+      </Box>
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="xs">
         <DialogTitle>Add New Task</DialogTitle>

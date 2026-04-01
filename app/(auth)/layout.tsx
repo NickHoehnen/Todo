@@ -8,13 +8,14 @@ export default function AuthLayout({
 }) {
   return (
     <Container
-      sx={{
+      sx={(theme) => ({
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
         height: '100vh',
-        bgcolor: 'background.default'
-      }}
+        px: 4,
+        bgcolor: 'background.default',
+      })}
     >
       <Paper 
         elevation={12} 
@@ -24,7 +25,8 @@ export default function AuthLayout({
           width: '100%', 
           maxWidth: '450px',
           marginTop: '-3rem', // Push it up slightly from center
-          bgcolor: 'background.paper'
+          bgcolor: 'background.paper',
+          boxShadow: '-3px 3px 6px 2px theme.background.paper'
         }}
       >
         {children}
