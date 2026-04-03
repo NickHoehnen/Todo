@@ -23,7 +23,7 @@ export default function MenuAppBar() {
 
   const PAGE_TITLES: Record<string, string> = {
     '/dashboard': 'Home',
-    '/calendar': 'My Schedule',
+    '/calendar': 'Calendar',
     '/settings': 'Settings',
     '/login': 'Welcome Back',
     '/profile': 'Profile',

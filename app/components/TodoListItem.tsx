@@ -21,6 +21,7 @@ export default function TodoListItem({ todoMeta }: TodoListItemProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   
   const menuOpen = Boolean(menuAnchorElem);
+  const isPastDue = todoMeta && !todoMeta.dateCompleted && todoMeta.dueDate.toDate() < new Date();
 
   const handleMenuOpen = (e: React.MouseEvent<HTMLElement>) => {
     e.preventDefault();
@@ -61,20 +62,21 @@ export default function TodoListItem({ todoMeta }: TodoListItemProps) {
           '&:hover': { borderColor: 'primary.light' }
         }}
         secondaryAction={
-          <IconButton edge="end" onClick={handleMenuOpen}>
+          <IconButton sx={{ mr: { xs: 0, sm: 1} }} edge="end" onClick={handleMenuOpen}>
             <MoreHoriz />
           </IconButton>
         }
       >
         <ListItemButton component={Link} href={`/todos/${todoMeta.id}`} sx={{ p: 2 }}>
           <ListItemAvatar>
-            <Avatar sx={{ bgcolor: 'primary.light', color: 'primary.main' }}>
+            <Avatar sx={{ bgcolor: 'primary.light', color: 'primary.dark' }}>
               <Person />
             </Avatar>
           </ListItemAvatar>
           <ListItemText
             primary={todoMeta.task}
-            secondary={todoMeta.dueDate?.toDate()?.toDateString() || "No date set"}
+            secondary={(isPastDue && "Overdue: ") + todoMeta.dueDate?.toDate()?.toDateString() || "No date set"}
+            slotProps={{ secondary: { color: isPastDue ? 'error.main' : 'text.secondary' }}}
             primaryTypographyProps={{ fontWeight: 'medium' }}
           />
         </ListItemButton>
@@ -87,10 +89,10 @@ export default function TodoListItem({ todoMeta }: TodoListItemProps) {
           transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         >
           <MenuItem onClick={handleMenuClose} component={Link} href={`/todos/${todoMeta.id}/edit`}>
-            <Edit fontSize="small" sx={{ mr: 1 }} /> Edit
+            <Edit fontSize="small" sx={{ mr: 1.5 }} /> Edit
           </MenuItem>
           <MenuItem onClick={promptDelete} sx={{ color: 'error.main' }}>
-            <Delete fontSize="small" sx={{ mr: 1 }} /> Delete
+            <Delete fontSize="small" sx={{ mr: 1.5 }} /> Delete
           </MenuItem>
         </Menu>
       </ListItem>

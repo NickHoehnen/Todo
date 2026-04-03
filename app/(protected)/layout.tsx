@@ -42,6 +42,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           overflowY: 'auto', 
           WebkitOverflowScrolling: 'touch', 
           py: 1,
+          px: 1,
           bgcolor: 'background.paper',
         }}
       >
@@ -71,7 +72,7 @@ export default function Layout({ children }: { children: ReactNode }) {
               key={item.href} 
               in={!loading} 
               style={{ transformOrigin: '0 0 0' }}
-              timeout={(index + 1) * 300} // Grow one-by-one
+              timeout={(index + 1) * 800} // Grow one-by-one
               appear
             >
               <ButtonBase 

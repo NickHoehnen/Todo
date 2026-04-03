@@ -24,11 +24,10 @@ export default function Dashboard() {
   const pathname = usePathname();
   const { replace } = useRouter();
 
-  // Local state for the input field
   const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || "");
 
   useEffect(() => {
-    // Optimization: Don't sync if the state already matches the URL
+    // Don't search if we already have
     const currentQuery = searchParams.get('q') || "";
     if (searchTerm === currentQuery) return;
 
@@ -39,8 +38,7 @@ export default function Dashboard() {
       } else {
         params.delete('q');
       }
-      
-      // scroll: false is vital for a smooth list experience
+
       replace(`${pathname}?${params.toString()}`, { scroll: false });
     }, 300);
 
@@ -48,7 +46,19 @@ export default function Dashboard() {
   }, [searchTerm, pathname, replace, searchParams]);
 
   // Filter the list based on the actual URL parameter
-  const filteredTodos = todos.filter((todo) =>
+  const sortedTodos = todos.sort((todo1, todo2) => {
+    const date1Converted = todo1.dueDate.toDate();
+    const date2Converted = todo2.dueDate.toDate();
+
+    return date1Converted.getTime() - date2Converted.getTime();
+  })
+  const allDueDates = todos.map(todo => todo.dueDate).sort((date1, date2) => {
+    const date1Converted = date1.toDate();
+    const date2Converted = date2.toDate();
+
+    return date2Converted.getTime() - date1Converted.getTime();
+  })
+  const filteredTodos = sortedTodos.filter((todo) =>
     todo.task.toLowerCase().includes((searchParams.get('q') || "").toLowerCase())
   );
 
@@ -96,7 +106,8 @@ export default function Dashboard() {
 
     try {
       setAddingTask(true);
-      const dateValue = new Date(dueDateString);
+      const [year, month, day] = dueDateString.split('-').map(Number);
+      const dateValue = new Date(year, month - 1, day)
       
       const newTodo: Omit<Todo, 'id'> = {
         task: taskTitle,
@@ -118,8 +129,8 @@ export default function Dashboard() {
   };
 
   return (
-    <Box sx={{ px: {xs: 2, md: 5}, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <Typography variant="h4" align="left" sx={{ my: 1, width: '100%', fontWeight: 'bold' }}>Todo:</Typography>
+    <Box sx={{ px: {xs: 1, md: 5}, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <Typography variant="h4" align="left" sx={{ my: 1, width: '100%', fontWeight: 'bold' }}>Schedule</Typography>
       
       {/* Search field and Add button */}
       <Stack direction="row" spacing={2} sx={{ mb: 2, width: { xs: '100%', md: '80%' } }}>
@@ -160,8 +171,8 @@ export default function Dashboard() {
       <Box sx={{ width: { xs: '100%', md: '80%' } }}>
         <TransitionGroup>
           {filteredTodos.map((todo) => (
-            <Collapse key={todo.id} sx={{ width: '100%' }}> {/* Ensure Collapse is full width */}
-              <Box sx={{ mb: 2, width: '100%' }}> {/* Ensure the wrapper is full width */}
+            <Collapse key={todo.id} >
+              <Box sx={{ mb: 2 }}>
                 <TodoListItem todoMeta={todo} />
               </Box>
             </Collapse>
