@@ -7,8 +7,6 @@ import { useEffect, useState, use } from "react"
 import { db } from "@/lib/firebase"
 
 interface TodosPageProps {
-  // In Next 16, params and searchParams remain Promises 
-  // that must be unwrapped with 'use()'
   params: Promise<{ id: string }>
 }
 
@@ -18,8 +16,7 @@ export default function TodosPage({ params }: TodosPageProps) {
   const [todoData, setTodoData] = useState<Todo | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Derived Logic: Correcting the "Past Due" check for Next 16
-  // Note: We check if it's NOT completed AND the date has passed.
+  // Past due if the date is before now AND it's not completed
   const isPastDue = todoData && !todoData.dateCompleted && todoData.dueDate.toDate() < new Date();
 
   useEffect(() => {

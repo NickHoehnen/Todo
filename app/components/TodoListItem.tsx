@@ -39,8 +39,6 @@ export default function TodoListItem({ todoMeta }: TodoListItemProps) {
   const handleDeleteConfirm = async () => {
     setConfirmOpen(false);
     try {
-      // Deleting here triggers the parent's onSnapshot, 
-      // which triggers the TransitionGroup animation.
       await deleteDoc(doc(db, "todos", todoMeta.id));
     } catch (e) {
       console.error("Delete failed:", e);
@@ -75,7 +73,7 @@ export default function TodoListItem({ todoMeta }: TodoListItemProps) {
           </ListItemAvatar>
           <ListItemText
             primary={todoMeta.task}
-            secondary={(isPastDue && "Overdue: ") + todoMeta.dueDate?.toDate()?.toDateString() || "No date set"}
+            secondary={(isPastDue ? "Overdue: " : "") + todoMeta.dueDate?.toDate()?.toDateString() || "No date set"}
             slotProps={{ secondary: { color: isPastDue ? 'error.main' : 'text.secondary' }}}
             primaryTypographyProps={{ fontWeight: 'medium' }}
           />
