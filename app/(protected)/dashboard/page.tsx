@@ -1,95 +1,46 @@
 'use client';
 
 import { 
-  Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, 
-  IconButton, Stack, TextField, Typography, InputAdornment, 
-  useMediaQuery, Collapse, ButtonBase, CircularProgress
+  Box, Button, CircularProgress, IconButton, Stack, TextField, 
+  Typography, InputAdornment, useMediaQuery, Collapse, ButtonBase 
 } from "@mui/material";
-import { collection, onSnapshot, query, where, addDoc, Timestamp } from "firebase/firestore";
 import { useEffect, useState, useMemo } from "react";
-import { db } from "@/lib/firebase";
-import { Todo } from "@/types/todo";
-import { useAuth } from "@/context/AuthContext"; // Adjusted import path
 import { Add, Clear, KeyboardArrowDown, Search } from "@mui/icons-material";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { useTheme } from "@mui/material/styles";
-import TodoListItem from "@/app/components/TodoListItem";
 import { TransitionGroup } from 'react-transition-group';
+
+// Context & Custom Components
+import { useAuth } from "@/context/AuthContext";
 import { useExpansion } from "@/context/ExpandedDatesContext";
 import { useTodos } from "@/context/TodosContext";
+import TodoListItem from "@/app/components/TodoListItem";
 import AddTaskDialog from "@/app/components/AddTaskDialog";
+import { Todo } from "@/types/todo";
 
 export default function Dashboard() {
-  const { user, loading: authLoading } = useAuth();
+  const { loading: authLoading } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
-  // --- Navigation & Search ---
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
+  
   const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || "");
-
-  // --- Data State ---
-  const { todos, loading } = useTodos();
-  //const [dataLoading, setDataLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const { todos, loading } = useTodos();
+  const { expandedDates, toggleDate, setExpandedDates } = useExpansion();
 
-  const [todayStr, setTodayStr] = useState<string>("");
-
-  const { expandedDates, toggleDate } = useExpansion();
-
-  const allDates: Set<string> = useMemo(() => {
-    return new Set(todos.map(todo => todo.dueDate.toDate().toDateString()));
-  }, [todos, loading])
-
-  const expandAll = () => {
-    allDates.forEach(date => {
-      if(!expandedDates.has(date)) toggleDate(date)
-    })
-  }
-  const collapseAll = () => {
-    Array.from(expandedDates).forEach(date => toggleDate(date))
-  }
-
-  // Auto-expand "today" once the data loads
-  useEffect(() => {
-    const localToday = new Date().toDateString();
-    
-    // Only run this check if we have dates and today hasn't been added to the state yet
-    if (allDates.has(localToday) && !expandedDates.has(localToday)) {
-      setTodayStr(localToday);
-      toggleDate(localToday);
-    }
-  }, [loading]);
-
-  // URL Syncing Debounce
-  useEffect(() => {
-    const currentQuery = searchParams.get('q') || "";
-    if(searchTerm === currentQuery) return;
-
-    // Wait .3s after the search term
-    const delayDebounceFn = setTimeout(() => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (searchTerm) params.set('q', searchTerm);
-      else params.delete('q');
-      replace(`${pathname}?${params.toString()}`, { scroll: false });
-    }, 300);
-
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm, pathname, replace, searchParams]);
-
-  // Sort todos by date
+  // Group and Filter Todos
   const filteredTodosByDate = useMemo(() => {
     const queryTerm = searchTerm.toLowerCase();
-    
-    // Filter by search query and Sort
+    const grouped: Record<string, Todo[]> = {};
+
     const filtered = todos
       .filter(t => t.task.toLowerCase().includes(queryTerm))
       .sort((a, b) => a.dueDate.toDate().getTime() - b.dueDate.toDate().getTime());
 
-    // Group by Date String
-    const grouped: Record<string, Todo[]> = {};
     filtered.forEach(todo => {
       const dateKey = todo.dueDate.toDate().toDateString();
       if (!grouped[dateKey]) grouped[dateKey] = [];
@@ -98,8 +49,38 @@ export default function Dashboard() {
 
     return grouped;
   }, [todos, searchTerm]);
-  const hasResults = Object.keys(filteredTodosByDate).length > 0;
 
+  const allDateKeys = useMemo(() => Object.keys(filteredTodosByDate), [filteredTodosByDate]);
+  const hasResults = allDateKeys.length > 0;
+  const todayStr = new Date().toDateString();
+
+  // Auto-expand "Today" on load
+  useEffect(() => {
+    if (!loading && filteredTodosByDate[todayStr] && !expandedDates.has(todayStr)) {
+      toggleDate(todayStr);
+    }
+    // We only want this to run once when data is initially loaded
+  }, [loading]);
+
+  const expandAll = () => setExpandedDates(new Set(allDateKeys));
+  const collapseAll = () => setExpandedDates(new Set());
+
+  // URL Syncing Debounce
+  useEffect(() => {
+    const currentQuery = searchParams.get('q') || "";
+    if(searchTerm === currentQuery) return;
+    
+    const delayDebounceFn = setTimeout(() => {
+  const params = new URLSearchParams(window.location.search);
+  if (searchTerm) params.set('q', searchTerm);
+  else params.delete('q');
+  
+  // This updates the URL bar WITHOUT triggering a Next.js data fetch
+  window.history.replaceState(null, '', `${pathname}?${params.toString()}`);
+}, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm, pathname, replace, searchParams]);
 
   if (authLoading || loading) {
     return (
@@ -115,7 +96,6 @@ export default function Dashboard() {
         Schedule
       </Typography>
       
-      {/* Search Field and Add Button */}
       <Stack direction="row" spacing={2} sx={{ mb: 2, width: { xs: '100%', md: '80%' } }}>
         <TextField
           fullWidth
@@ -137,52 +117,49 @@ export default function Dashboard() {
             )
           }}
         />
-        <Box sx={{ display: 'flex', p: 0.5 }}>
-          <Button 
-            variant="contained" 
-            onClick={() => setDialogOpen(true)} 
-            sx={{ px: 3, whiteSpace: 'nowrap', minWidth: isMobile ? '56px' : 'auto' }}
-          >
-            <Add sx={{ mr: isMobile ? 0 : 1 }} />
-            {!isMobile && "Create Task"}
-          </Button>
-        </Box>
+        <Button 
+          variant="contained" 
+          onClick={() => setDialogOpen(true)} 
+          sx={{ px: 3, whiteSpace: 'nowrap', height: '56px' }}
+        >
+          <Add sx={{ mr: isMobile ? 0 : 1 }} />
+          {!isMobile && "Create Task"}
+        </Button>
       </Stack>
 
       <Box sx={{ width: { xs: '100%', md: '80%' } }}>
-        <Stack direction="row-reverse" spacing={1} sx={{ width: '100%', display: 'flex', alignItems: 'end' }}>
-          <Typography component={ButtonBase} onClick={collapseAll} sx={{ color:"text.secondary", px: 1, borderRadius: 1, '&:hover': { color: 'info.light' } }}>Collapse All</Typography>
-          <Typography component={ButtonBase} onClick={expandAll} sx={{ px: 1, borderRadius: 1, '&:hover': { color: 'info.light' } }}>Expand All</Typography>
-       </Stack>
+        <Stack direction="row" justifyContent="flex-end" spacing={1} sx={{ mb: 1 }}>
+          <Typography component={ButtonBase} onClick={expandAll} sx={{ fontSize: '0.875rem', px: 1, borderRadius: 1, '&:hover': { color: 'info.main' } }}>Expand All</Typography>
+          <Typography component={ButtonBase} onClick={collapseAll} sx={{ fontSize: '0.875rem', color:"text.secondary", px: 1, borderRadius: 1, '&:hover': { color: 'info.main' } }}>Collapse All</Typography>
+        </Stack>
 
+        {/* Outer Transition Group */}
         <TransitionGroup>
           {Object.entries(filteredTodosByDate).map(([dueDate, groupTodos]) => {
-            const isOpen = expandedDates.has(dueDate);
+            
+            const isOpen = searchTerm !== "" || expandedDates.has(dueDate); 
+
             return (
-              <Collapse key={dueDate}>
-                <Box sx={{ mb: 1 }}>
-                  {/* Date Label */}
+              <Collapse key={dueDate}> 
+                <Box sx={{ mb: 2 }}>
+                  
                   <ButtonBase 
                     onClick={() => toggleDate(dueDate)} 
                     sx={{ 
                       display: 'flex', 
                       justifyContent: 'space-between', 
                       width: '100%', 
-                      mb: 0.5, 
-                      px: 1, 
-                      py: 0.5,
+                      px: 1, py: 0.5,
                       borderRadius: 1,
-                      textAlign: 'left',
-                      '&:hover .dueDateLabel': { ml: 1.5 }
+                      '&:hover .dueDateLabel': { color: 'primary.main' }
                     }}
                   >
                     <Stack direction="row" alignItems="center" spacing={2}>
                       <Typography 
                         className="dueDateLabel" 
                         sx={{ 
-                          transition: 'margin .2s', 
-                          ml: isOpen ? 1 : 0, 
                           fontWeight: '600',
+                          transition: 'color 0.2s',
                           color: isOpen ? 'text.primary' : 'text.secondary' 
                         }}
                       >
@@ -191,25 +168,25 @@ export default function Dashboard() {
                       {dueDate === todayStr && (
                         <Typography 
                           variant="caption"
-                          fontWeight="bold"
-                          sx={{ px: 1, py: 0.2, backgroundColor: 'info.main', color: 'white', borderRadius: 1 }}
+                          sx={{ px: 1, py: 0.2, backgroundColor: 'info.main', color: 'white', borderRadius: 1, fontWeight: 'bold' }}
                         >
                           Today
                         </Typography>
                       )}
                     </Stack>
-                    <KeyboardArrowDown sx={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.4s' }} />
+                    <KeyboardArrowDown sx={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.3s' }} />
                   </ButtonBase>
-                  {/* Todos list for this day */}
-                  <Collapse in={expandedDates.has(dueDate)}>
-                      <TransitionGroup component={Stack} spacing={1}>
-                          {groupTodos.map(todo => (
-                            <Collapse key={todo.id}>
-                              <TodoListItem todoMeta={todo} />
-                            </Collapse>
-                          ))}
-                      </TransitionGroup>
+
+                  <Collapse in={isOpen}>
+                    <TransitionGroup component={Stack} spacing={1} sx={{ mt: 1 }}>
+                      {groupTodos.map(todo => (
+                        <Collapse key={todo.id}>
+                          <TodoListItem todoMeta={todo} />
+                        </Collapse>
+                      ))}
+                    </TransitionGroup>
                   </Collapse>
+
                 </Box>
               </Collapse>
             );
@@ -225,7 +202,6 @@ export default function Dashboard() {
         )}
       </Box>
 
-      {/* Add Task Dialog */}
       <AddTaskDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
     </Box>
   );
