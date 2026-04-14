@@ -3,8 +3,9 @@
 import { Todo } from "@/types/todo"
 import { Typography, CircularProgress, Box } from "@mui/material"
 import { doc, getDoc } from "firebase/firestore"
-import { useEffect, useState, use } from "react"
+import { useEffect, useState, use, useMemo } from "react"
 import { db } from "@/lib/firebase"
+import { useTodos } from "@/context/TodosContext"
 
 interface TodosPageProps {
   params: Promise<{ id: string }>
@@ -12,32 +13,16 @@ interface TodosPageProps {
 
 export default function TodosPage({ params }: TodosPageProps) {
   const { id } = use(params); 
-  
-  const [todoData, setTodoData] = useState<Todo | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { todos, loading } = useTodos();
+  const todoData = useMemo(() => todos.find(todo => todo.id === id), [todos]);
 
   // Past due if the date is before now AND it's not completed
-  const isPastDue = todoData && !todoData.dateCompleted && todoData.dueDate.toDate() < new Date();
+  const isPastDue = useMemo(() => {
+    if(!todoData) return false;
+    !todoData.dateCompleted && new Date() > todoData.dueDate.toDate();
+  }, [todoData])
 
-  useEffect(() => {
-    const getTodoDoc = async () => {
-      try {
-        setLoading(true);
-        const docRef = doc(db, "todos", id);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          setTodoData({ id: docSnap.id, ...docSnap.data() } as Todo);
-        }
-      } catch (error) {
-        console.error("Firestore Error:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (id) getTodoDoc();
-  }, [id]);
+  
 
   if (loading) {
     return (

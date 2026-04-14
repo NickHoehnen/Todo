@@ -3,11 +3,7 @@
 import { 
   Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, 
   IconButton, Stack, TextField, Typography, InputAdornment, 
-  useMediaQuery, Collapse, ButtonBase, CircularProgress, 
-  Fade,
-  Grow,
-  Zoom,
-  buttonBaseClasses
+  useMediaQuery, Collapse, ButtonBase, CircularProgress
 } from "@mui/material";
 import { collection, onSnapshot, query, where, addDoc, Timestamp } from "firebase/firestore";
 import { useEffect, useState, useMemo } from "react";
@@ -19,6 +15,9 @@ import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { useTheme } from "@mui/material/styles";
 import TodoListItem from "@/app/components/TodoListItem";
 import { TransitionGroup } from 'react-transition-group';
+import { useExpansion } from "@/context/ExpandedDatesContext";
+import { useTodos } from "@/context/TodosContext";
+import AddTaskDialog from "@/app/components/AddTaskDialog";
 
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
@@ -32,43 +31,37 @@ export default function Dashboard() {
   const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || "");
 
   // --- Data State ---
-  const [todos, setTodos] = useState<Array<Todo>>([]);
-  const [dataLoading, setDataLoading] = useState(true);
+  const { todos, loading } = useTodos();
+  //const [dataLoading, setDataLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [addingTask, setAddingTask] = useState(false);
-  
-  // --- Form State ---
-  const [taskTitle, setTaskTitle] = useState("");
-  const [dueDateString, setDueDateString] = useState("");
 
   const [todayStr, setTodayStr] = useState<string>("");
-  const [datesOpen, setDatesOpen] = useState<Record<string, boolean>>({});
 
-  const allDates = useMemo(() => {
-    return todos.map(todo => todo.dueDate);
-  }, [todos])
+  const { expandedDates, toggleDate } = useExpansion();
+
+  const allDates: Set<string> = useMemo(() => {
+    return new Set(todos.map(todo => todo.dueDate.toDate().toDateString()));
+  }, [todos, loading])
 
   const expandAll = () => {
-    setDatesOpen(prev => {
-      const dates = { ...prev };
-      allDates.forEach(date => dates[date.toDate().toDateString()] = true);
-      return dates
-    });
+    allDates.forEach(date => {
+      if(!expandedDates.has(date)) toggleDate(date)
+    })
   }
   const collapseAll = () => {
-    setDatesOpen(prev => {
-      const dates = { ...prev };
-      allDates.forEach(date => dates[date.toDate().toDateString()] = false);
-      return dates
-    });
+    Array.from(expandedDates).forEach(date => toggleDate(date))
   }
 
-  // Grab today's date on the client and expand today's todo list if exists
+  // Auto-expand "today" once the data loads
   useEffect(() => {
     const localToday = new Date().toDateString();
-    setTodayStr(localToday);
-    if(datesOpen[localToday] !== null) setDatesOpen(prev => ({ ...prev, [localToday]: true }));
-  }, []);
+    
+    // Only run this check if we have dates and today hasn't been added to the state yet
+    if (allDates.has(localToday) && !expandedDates.has(localToday)) {
+      setTodayStr(localToday);
+      toggleDate(localToday);
+    }
+  }, [loading]);
 
   // URL Syncing Debounce
   useEffect(() => {
@@ -85,40 +78,6 @@ export default function Dashboard() {
 
     return () => clearTimeout(delayDebounceFn);
   }, [searchTerm, pathname, replace, searchParams]);
-
-  // Firestore data subscription
-  useEffect(() => {
-    if (!user) {
-      setTodos([]);
-      setDataLoading(false);
-      return;
-    }
-
-    // Firestore query for todos assigned to current user
-    const q = query(
-      collection(db, "todos"), 
-      where("assignedTo", "array-contains", user.uid)
-    );
-
-    // When change detected on query, update todos and loading states
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setDataLoading(true);
-      const todosData = snapshot.docs.map(todoDoc => {
-        return {
-          ...todoDoc.data(),
-          id: todoDoc.id,
-        } as Todo
-      })
-      setTodos(todosData);
-      setDataLoading(false);
-    }, (error) => {
-      if(error.code != 'permission-denied') {
-        console.error("Snapshot Error", error)
-      }
-    })
-
-    return () => unsubscribe();
-  }, [user]);
 
   // Sort todos by date
   const filteredTodosByDate = useMemo(() => {
@@ -139,43 +98,10 @@ export default function Dashboard() {
 
     return grouped;
   }, [todos, searchTerm]);
-
   const hasResults = Object.keys(filteredTodosByDate).length > 0;
 
-  // Add Task
-  const handleAddTask = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !taskTitle || !dueDateString) return;
 
-    try {
-      setAddingTask(true);
-      const [year, month, day] = dueDateString.split('-').map(Number);
-      const dateValue = new Date(year, month - 1, day);
-      
-      const newTodo: Omit<Todo, 'id'> = {
-        task: taskTitle,
-        assignedTo: [user.uid],
-        dueDate: Timestamp.fromDate(dateValue),
-        dateCompleted: null,
-        completed: false,
-      };
-
-      await addDoc(collection(db, "todos"), newTodo);
-      setTaskTitle("");
-      setDueDateString("");
-      setDialogOpen(false);
-      setDatesOpen((prev) => ({
-        ...prev,
-        [dateValue.toDateString()]: true
-      }))
-    } catch (error) {
-      console.error("Error adding task: ", error);
-    } finally {
-      setAddingTask(false);
-    }
-  };
-
-  if (authLoading || dataLoading) {
+  if (authLoading || loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}>
         <CircularProgress />
@@ -223,21 +149,21 @@ export default function Dashboard() {
         </Box>
       </Stack>
 
-      <Stack direction="row-reverse" spacing={1} sx={{ width: '100%', display: 'flex', alignItems: 'end' }}>
+      <Box sx={{ width: { xs: '100%', md: '80%' } }}>
+        <Stack direction="row-reverse" spacing={1} sx={{ width: '100%', display: 'flex', alignItems: 'end' }}>
           <Typography component={ButtonBase} onClick={collapseAll} sx={{ color:"text.secondary", px: 1, borderRadius: 1, '&:hover': { color: 'info.light' } }}>Collapse All</Typography>
           <Typography component={ButtonBase} onClick={expandAll} sx={{ px: 1, borderRadius: 1, '&:hover': { color: 'info.light' } }}>Expand All</Typography>
-      </Stack>
+       </Stack>
 
-      <Box sx={{ width: { xs: '100%', md: '80%' } }}>
         <TransitionGroup>
           {Object.entries(filteredTodosByDate).map(([dueDate, groupTodos]) => {
-            const isOpen = !!datesOpen[dueDate];
+            const isOpen = expandedDates.has(dueDate);
             return (
               <Collapse key={dueDate}>
                 <Box sx={{ mb: 1 }}>
                   {/* Date Label */}
                   <ButtonBase 
-                    onClick={() => setDatesOpen(prev => ({ ...prev, [dueDate]: !prev[dueDate] }))} 
+                    onClick={() => toggleDate(dueDate)} 
                     sx={{ 
                       display: 'flex', 
                       justifyContent: 'space-between', 
@@ -275,7 +201,7 @@ export default function Dashboard() {
                     <KeyboardArrowDown sx={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.4s' }} />
                   </ButtonBase>
                   {/* Todos list for this day */}
-                  <Collapse in={!!datesOpen[dueDate]}>
+                  <Collapse in={expandedDates.has(dueDate)}>
                       <TransitionGroup component={Stack} spacing={1}>
                           {groupTodos.map(todo => (
                             <Collapse key={todo.id}>
@@ -300,38 +226,7 @@ export default function Dashboard() {
       </Box>
 
       {/* Add Task Dialog */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>Add New Task</DialogTitle>
-        <Box component="form" onSubmit={handleAddTask}>
-          <DialogContent>
-            <Stack spacing={3} sx={{ mt: 1 }}>
-              <TextField 
-                fullWidth
-                label="Task Description" 
-                value={taskTitle}
-                onChange={(e) => setTaskTitle(e.target.value)}
-                required
-                autoFocus
-              />
-              <TextField 
-                fullWidth
-                type="date"
-                label="Due Date" 
-                value={dueDateString}
-                onChange={(e) => setDueDateString(e.target.value)}
-                required
-                InputLabelProps={{ shrink: true }}
-              />
-            </Stack>
-          </DialogContent>
-          <DialogActions sx={{ p: 3 }}>
-            <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button disabled={addingTask} type="submit" variant="contained">
-              {addingTask ? "Saving..." : "Save Task"}
-            </Button>
-          </DialogActions>
-        </Box>
-      </Dialog>
+      <AddTaskDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
     </Box>
   );
 }
