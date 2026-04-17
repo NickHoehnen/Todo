@@ -1,7 +1,7 @@
 import { Timestamp } from "firebase/firestore";
 
 
-export type Todo = {
+export type Task = {
   id: string,
   task: string,
   assignedTo: Array<string>,

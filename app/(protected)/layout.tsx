@@ -10,7 +10,7 @@ import MenuAppBar from "../components/MenuAppBar";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { ExpandedDatesProvider } from "@/context/ExpandedDatesContext";
-import { TodosProvider } from "@/context/TodosContext";
+import { TasksProvider } from "@/context/TasksContext";
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
@@ -33,7 +33,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   const rootPath = `/${pathname.split('/')[1]}`;
 
   return (
-    <TodosProvider>
+    <TasksProvider>
       <ExpandedDatesProvider>
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100dvh' }}>
           <MenuAppBar />
@@ -93,6 +93,6 @@ export default function Layout({ children }: { children: ReactNode }) {
           </Box>
         </Box>
       </ExpandedDatesProvider>
-    </TodosProvider>
+    </TasksProvider>
   );
 }

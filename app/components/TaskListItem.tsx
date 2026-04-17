@@ -5,23 +5,27 @@ import {
   ListItemButton, Menu, MenuItem, Dialog, 
   DialogTitle, DialogContent, DialogContentText, DialogActions, Button 
 } from "@mui/material";
-import { Todo } from "@/types/todo";
-import { MoreHoriz, Person, Edit, Delete } from "@mui/icons-material";
+import { Task } from "@/types/Task";
+import { MoreHoriz, Person, Edit, Delete, Check } from "@mui/icons-material";
 import Link from "next/link";
 import { useState } from "react";
-import { db } from "@/lib/firebase";
-import { deleteDoc, doc } from "firebase/firestore";
+import { useTasks } from "@/context/TasksContext";
 
-interface TodoListItemProps {
-  todoMeta: Todo;
+interface TaskListItemProps {
+  taskMeta: Task;
 }
 
-export default function TodoListItem({ todoMeta }: TodoListItemProps) {
+export default function TaskListItem({ taskMeta }: TaskListItemProps) {
   const [menuAnchorElem, setMenuAnchorElem] = useState<HTMLElement | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const { deleteTask, markCompleted } = useTasks();
   
   const menuOpen = Boolean(menuAnchorElem);
-  const isPastDue = todoMeta && !todoMeta.dateCompleted && todoMeta.dueDate.toDate() < new Date();
+  const completed = taskMeta.completed;
+  const hasDueDate = !!taskMeta.dueDate;
+  
+  const isPastDue = hasDueDate && !completed && taskMeta.dueDate.toDate() < new Date();
 
   const handleMenuOpen = (e: React.MouseEvent<HTMLElement>) => {
     e.preventDefault();
@@ -31,6 +35,11 @@ export default function TodoListItem({ todoMeta }: TodoListItemProps) {
 
   const handleMenuClose = () => setMenuAnchorElem(null);
 
+  const handleMarkCompleted = () => {
+    markCompleted(taskMeta.id);
+    handleMenuClose();
+  };
+
   const promptDelete = () => {
     setConfirmOpen(true);
     handleMenuClose();
@@ -38,12 +47,15 @@ export default function TodoListItem({ todoMeta }: TodoListItemProps) {
 
   const handleDeleteConfirm = async () => {
     setConfirmOpen(false);
-    try {
-      await deleteDoc(doc(db, "todos", todoMeta.id));
-    } catch (e) {
-      console.error("Delete failed:", e);
-    }
+    deleteTask(taskMeta.id);
   };
+
+  let secondaryText = "No date set";
+  if (completed) {
+    secondaryText = "Completed";
+  } else if (hasDueDate) {
+    secondaryText = `${isPastDue ? "Overdue: " : "Due: "} ${taskMeta.dueDate.toDate().toDateString()}`;
+  }
 
   return (
     <>
@@ -65,16 +77,20 @@ export default function TodoListItem({ todoMeta }: TodoListItemProps) {
           </IconButton>
         }
       >
-        <ListItemButton component={Link} href={`/todos/${todoMeta.id}`} sx={{ p: 2 }}>
+        <ListItemButton component={Link} href={`/tasks/${taskMeta.id}`} sx={{ p: 2 }}>
           <ListItemAvatar>
             <Avatar sx={{ bgcolor: 'primary.light', color: 'primary.dark' }}>
               <Person />
             </Avatar>
           </ListItemAvatar>
           <ListItemText
-            primary={todoMeta.task}
-            secondary={(isPastDue ? "Overdue: " : "") + todoMeta.dueDate?.toDate()?.toDateString() || "No date set"}
-            slotProps={{ secondary: { color: isPastDue ? 'error.main' : 'text.secondary' }}}
+            primary={taskMeta.task}
+            secondary={secondaryText}
+            slotProps={{ 
+              secondary: { 
+                color: (isPastDue && !completed) ? 'error.main' : completed ? 'success.main' : 'text.secondary' 
+              }
+            }}
             primaryTypographyProps={{ fontWeight: 'medium' }}
           />
         </ListItemButton>
@@ -86,8 +102,11 @@ export default function TodoListItem({ todoMeta }: TodoListItemProps) {
           anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
           transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         >
-          <MenuItem onClick={handleMenuClose} component={Link} href={`/todos/${todoMeta.id}/edit`}>
+          <MenuItem onClick={handleMenuClose} component={Link} href={`/tasks/${taskMeta.id}/edit`}>
             <Edit fontSize="small" sx={{ mr: 1.5 }} /> Edit
+          </MenuItem>
+          <MenuItem onClick={handleMarkCompleted}>
+            <Check fontSize="small" sx={{ mr: 1.5 }} /> Mark Completed
           </MenuItem>
           <MenuItem onClick={promptDelete} sx={{ color: 'error.main' }}>
             <Delete fontSize="small" sx={{ mr: 1.5 }} /> Delete
@@ -104,7 +123,7 @@ export default function TodoListItem({ todoMeta }: TodoListItemProps) {
         <DialogTitle id="delete-dialog-title">Delete Task?</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Are you sure you want to delete <strong>"{todoMeta.task}"</strong>? This action cannot be undone.
+            Are you sure you want to delete <strong>&quot;{taskMeta.task}&quot;</strong>? This action cannot be undone.
           </DialogContentText>
         </DialogContent>
         <DialogActions sx={{ pb: 2, px: 3 }}>

@@ -13,10 +13,10 @@ import { TransitionGroup } from 'react-transition-group';
 // Context & Custom Components
 import { useAuth } from "@/context/AuthContext";
 import { useExpansion } from "@/context/ExpandedDatesContext";
-import { useTodos } from "@/context/TodosContext";
-import TodoListItem from "@/app/components/TodoListItem";
+import { useTasks } from "@/context/TasksContext";
+import TaskListItem from "@/app/components/TaskListItem";
 import AddTaskDialog from "@/app/components/AddTaskDialog";
-import { Todo } from "@/types/todo";
+import { Task } from "@/types/Task";
 
 export default function Dashboard() {
   const { loading: authLoading } = useAuth();
@@ -29,34 +29,34 @@ export default function Dashboard() {
   
   const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || "");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const { todos, loading } = useTodos();
+  const { tasks, loading, deleteTask } = useTasks();
   const { expandedDates, toggleDate, setExpandedDates } = useExpansion();
 
-  // Group and Filter Todos
-  const filteredTodosByDate = useMemo(() => {
+  // Group and Filter tasks
+  const filteredTasksByDate = useMemo(() => {
     const queryTerm = searchTerm.toLowerCase();
-    const grouped: Record<string, Todo[]> = {};
+    const grouped: Record<string, Task[]> = {};
 
-    const filtered = todos
+    const filtered = tasks
       .filter(t => t.task.toLowerCase().includes(queryTerm))
       .sort((a, b) => a.dueDate.toDate().getTime() - b.dueDate.toDate().getTime());
 
-    filtered.forEach(todo => {
-      const dateKey = todo.dueDate.toDate().toDateString();
+    filtered.forEach(task => {
+      const dateKey = task.dueDate.toDate().toDateString();
       if (!grouped[dateKey]) grouped[dateKey] = [];
-      grouped[dateKey].push(todo);
+      grouped[dateKey].push(task);
     });
 
     return grouped;
-  }, [todos, searchTerm]);
+  }, [tasks, searchTerm]);
 
-  const allDateKeys = useMemo(() => Object.keys(filteredTodosByDate), [filteredTodosByDate]);
+  const allDateKeys = useMemo(() => Object.keys(filteredTasksByDate), [filteredTasksByDate]);
   const hasResults = allDateKeys.length > 0;
   const todayStr = new Date().toDateString();
 
   // Auto-expand "Today" on load
   useEffect(() => {
-    if (!loading && filteredTodosByDate[todayStr] && !expandedDates.has(todayStr)) {
+    if (!loading && filteredTasksByDate[todayStr] && !expandedDates.has(todayStr)) {
       toggleDate(todayStr);
     }
     // We only want this to run once when data is initially loaded
@@ -71,13 +71,13 @@ export default function Dashboard() {
     if(searchTerm === currentQuery) return;
     
     const delayDebounceFn = setTimeout(() => {
-  const params = new URLSearchParams(window.location.search);
-  if (searchTerm) params.set('q', searchTerm);
-  else params.delete('q');
-  
-  // This updates the URL bar WITHOUT triggering a Next.js data fetch
-  window.history.replaceState(null, '', `${pathname}?${params.toString()}`);
-}, 300);
+    const params = new URLSearchParams(window.location.search);
+    if (searchTerm) params.set('q', searchTerm);
+    else params.delete('q');
+    
+    // This updates the URL bar WITHOUT triggering a Next.js data fetch
+    window.history.replaceState(null, '', `${pathname}?${params.toString()}`);
+  }, 300);
 
     return () => clearTimeout(delayDebounceFn);
   }, [searchTerm, pathname, replace, searchParams]);
@@ -135,7 +135,7 @@ export default function Dashboard() {
 
         {/* Outer Transition Group */}
         <TransitionGroup>
-          {Object.entries(filteredTodosByDate).map(([dueDate, groupTodos]) => {
+          {Object.entries(filteredTasksByDate).map(([dueDate, groupTasks]) => {
             
             const isOpen = searchTerm !== "" || expandedDates.has(dueDate); 
 
@@ -179,9 +179,9 @@ export default function Dashboard() {
 
                   <Collapse in={isOpen}>
                     <TransitionGroup component={Stack} spacing={1} sx={{ mt: 1 }}>
-                      {groupTodos.map(todo => (
-                        <Collapse key={todo.id}>
-                          <TodoListItem todoMeta={todo} />
+                      {groupTasks.map(task => (
+                        <Collapse key={task.id}>
+                          <TaskListItem taskMeta={task} />
                         </Collapse>
                       ))}
                     </TransitionGroup>

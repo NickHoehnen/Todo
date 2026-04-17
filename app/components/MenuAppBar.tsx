@@ -27,7 +27,7 @@ export default function MenuAppBar() {
     '/settings': 'Settings',
     '/login': 'Welcome Back',
     '/profile': 'Profile',
-    '/todos': 'Details',
+    '/tasks': 'Details',
   };
 
   const rootPath = `/${pathname.split('/')[1]}`;

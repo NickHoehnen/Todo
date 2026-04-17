@@ -1,10 +1,15 @@
 import { useState } from "react";
 import { Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Button, Box } from "@mui/material";
 import { Timestamp } from "firebase/firestore";
-import { Todo } from "@/types/todo";
+import { Task } from "@/types/Task";
 import { useAuth } from "@/context/AuthContext";
-import { useTodos } from "@/context/TodosContext";
+import { useTasks } from "@/context/TasksContext";
 import { useExpansion } from "@/context/ExpandedDatesContext";
+import { DemoContainer } from '@mui/x-date-pickers/internals/demo';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import dayjs, { Dayjs } from "dayjs";
 
 interface AddTaskDialogProps {
   open: boolean;
@@ -13,22 +18,22 @@ interface AddTaskDialogProps {
 
 export default function AddTaskDialog({ open, onClose }: AddTaskDialogProps) {
   const { user } = useAuth();
-  const { addTodo, addingTask } = useTodos();
+  const { addTask, addingTask } = useTasks();
   const { expandedDates, toggleDate } = useExpansion();
 
   // Form state is now isolated here!
   const [taskTitle, setTaskTitle] = useState("");
-  const [dueDateString, setDueDateString] = useState("");
+  const [dueDate, setDueDate] = useState<Dayjs | null>(dayjs());
 
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !dueDate) return; // Ensure dueDate isn't null
 
-    const [year, month, day] = dueDateString.split('-').map(Number);
-    const dateValue = new Date(year, month - 1, day);
+    // Dayjs makes conversion to native Date (for Firebase) very easy:
+    const dateValue = dueDate.toDate(); 
     const dateStr = dateValue.toDateString();
     
-    const newTodo: Omit<Todo, 'id'> = {
+    const newTask: Omit<Task, 'id'> = {
       task: taskTitle,
       assignedTo: [user.uid],
       dueDate: Timestamp.fromDate(dateValue),
@@ -36,13 +41,11 @@ export default function AddTaskDialog({ open, onClose }: AddTaskDialogProps) {
       completed: false,
     };
 
-    await addTodo(newTodo);
-
+    await addTask(newTask);
     if (!expandedDates.has(dateStr)) toggleDate(dateStr);
 
-    // Reset and close
     setTaskTitle("");
-    setDueDateString("");
+    setDueDate(dayjs()); // Reset to today
     onClose();
   };
 
@@ -60,15 +63,15 @@ export default function AddTaskDialog({ open, onClose }: AddTaskDialogProps) {
               required
               autoFocus
             />
-            <TextField 
-              fullWidth
-              type="date"
-              label="Due Date" 
-              value={dueDateString}
-              onChange={(e) => setDueDateString(e.target.value)}
-              required
-              InputLabelProps={{ shrink: true }}
-            />
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
+              <DatePicker 
+                label="Due Date" 
+                value={dueDate} 
+                onChange={(newValue) => setDueDate(newValue)}
+                // Ensure the picker fills the width like other fields
+                slotProps={{ textField: { fullWidth: true, required: true } }} 
+              />
+            </LocalizationProvider>
           </Stack>
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
