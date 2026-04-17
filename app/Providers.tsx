@@ -8,7 +8,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   const [mode, setMode] = useState<"light" | "dark">("dark");
 
   useEffect(() => {
-    // 2. This ONLY runs on the client
+    // This needs to run on the client
     const saved = localStorage.getItem("theme-mode") as "light" | "dark" | null;
     if (saved) {
       setMode(saved);

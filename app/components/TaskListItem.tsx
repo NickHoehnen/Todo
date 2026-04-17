@@ -6,7 +6,7 @@ import {
   DialogTitle, DialogContent, DialogContentText, DialogActions, Button 
 } from "@mui/material";
 import { Task } from "@/types/Task";
-import { MoreHoriz, Person, Edit, Delete, Check } from "@mui/icons-material";
+import { MoreHoriz, Person, Edit, Delete, Check, DoNotDisturb } from "@mui/icons-material";
 import Link from "next/link";
 import { useState } from "react";
 import { useTasks } from "@/context/TasksContext";
@@ -19,7 +19,7 @@ export default function TaskListItem({ taskMeta }: TaskListItemProps) {
   const [menuAnchorElem, setMenuAnchorElem] = useState<HTMLElement | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  const { deleteTask, markCompleted } = useTasks();
+  const { deleteTask, markComplete, markIncomplete } = useTasks();
   
   const menuOpen = Boolean(menuAnchorElem);
   const completed = taskMeta.completed;
@@ -35,8 +35,12 @@ export default function TaskListItem({ taskMeta }: TaskListItemProps) {
 
   const handleMenuClose = () => setMenuAnchorElem(null);
 
-  const handleMarkCompleted = () => {
-    markCompleted(taskMeta.id);
+  const handleMarkComplete = () => {
+    markComplete(taskMeta.id);
+    handleMenuClose();
+  };
+  const handleMarkIncomplete = () => {
+    markIncomplete(taskMeta.id);
     handleMenuClose();
   };
 
@@ -63,7 +67,7 @@ export default function TaskListItem({ taskMeta }: TaskListItemProps) {
         disablePadding
         sx={{
           width: '100%',
-          border: 1,
+          border: 1.5,
           borderRadius: 2,
           borderColor: 'divider',
           bgcolor: 'background.paper',
@@ -105,9 +109,15 @@ export default function TaskListItem({ taskMeta }: TaskListItemProps) {
           <MenuItem onClick={handleMenuClose} component={Link} href={`/tasks/${taskMeta.id}/edit`}>
             <Edit fontSize="small" sx={{ mr: 1.5 }} /> Edit
           </MenuItem>
-          <MenuItem onClick={handleMarkCompleted}>
-            <Check fontSize="small" sx={{ mr: 1.5 }} /> Mark Completed
-          </MenuItem>
+          {
+            taskMeta.completed ?
+              <MenuItem onClick={handleMarkIncomplete} sx={{ color: 'warning.main' }}>
+                <DoNotDisturb fontSize="small" sx={{ mr: 1.5 }} /> Incomplete
+              </MenuItem> :
+              <MenuItem onClick={handleMarkComplete} sx={{ color: 'success.main' }}>
+                <Check fontSize="small" sx={{ mr: 1.5 }} /> Complete
+              </MenuItem>
+          }
           <MenuItem onClick={promptDelete} sx={{ color: 'error.main' }}>
             <Delete fontSize="small" sx={{ mr: 1.5 }} /> Delete
           </MenuItem>

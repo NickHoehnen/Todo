@@ -1,7 +1,7 @@
 import { Task } from "@/types/Task";
 import { createContext, useContext, useEffect, useState } from "react";
 import { useAuth } from "./AuthContext";
-import { addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, query, setDoc, where } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, query, setDoc, updateDoc, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 interface TasksContextType {
@@ -9,9 +9,12 @@ interface TasksContextType {
   loading: boolean;
   addingTask: boolean;
   deletingTask: boolean;
+  markingComplete: boolean;
+  markingIncomplete: boolean;
   addTask: (task: Omit<Task, 'id'>) => Promise<boolean>;
   deleteTask: (taskId: string) => Promise<boolean>;
-  markCompleted: (taskId: string) => Promise<void>
+  markComplete: (taskId: string) => Promise<void>;
+  markIncomplete: (taskId: string) => Promise<void>
 }
 
 // Ensure the default empty function matches the new Promise signature
@@ -22,7 +25,8 @@ export const TasksProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [addingTask, setAddingTask] = useState(false);
   const [deletingTask, setDeletingTask] = useState(false);
-  const [markingCompleted, setMarkingCompleted] = useState(false);
+  const [markingComplete, setMarkingComplete] = useState(false);
+  const [markingIncomplete, setMarkingIncomplete] = useState(false);
   const { user } = useAuth();
 
   const addTask = async (task: Omit<Task, 'id'>) => {
@@ -31,8 +35,6 @@ export const TasksProvider = ({ children }: { children: React.ReactNode }) => {
       await addDoc(collection(db, "tasks"), task);
       return true;
     } catch (error) {
-      console.error("Error adding task: ", error);
-      // Optional: throw error here if you want your UI to catch it and show a toast alert!
       console.error("Error adding task", task, error);
       return false;
     } finally {
@@ -54,20 +56,27 @@ export const TasksProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }
 
-  const markCompleted = async (taskId: string) => {
+  const markComplete = async (taskId: string) => {
     try {
-      setMarkingCompleted(true);
+      setMarkingComplete(true);
       const docRef = doc(db, "tasks", taskId);
-      const thisTask = tasks.find(task => task.id === taskId);
-
-      if(thisTask) await setDoc(docRef, { ...thisTask, completed: true });
-      else {
-        throw new Error(`No task found matching id: ${taskId}`);
-      }
+      await updateDoc(docRef, { completed: true });
     } catch(error) {
       console.error("Error marking task complete", `taskId ${taskId}`, error);
     } finally {
-      setMarkingCompleted(false);
+      setMarkingComplete(false);
+    }
+  }
+
+  const markIncomplete = async (taskId: string) => {
+    try {
+      setMarkingIncomplete(true);
+      const docRef = doc(db, "tasks", taskId);
+      await updateDoc(docRef, { completed: false });
+    } catch(error) {
+      console.error("Error marking task incomplete", `taskId ${taskId}`, error);
+    } finally {
+      setMarkingIncomplete(false);
     }
   }
 
@@ -103,7 +112,7 @@ export const TasksProvider = ({ children }: { children: React.ReactNode }) => {
   }, [user]);
 
   return (
-    <TasksContext.Provider value={{ tasks, loading, addingTask, deletingTask, addTask, deleteTask, markCompleted }}>
+    <TasksContext.Provider value={{ tasks, loading, addingTask, deletingTask, markingComplete, markingIncomplete, addTask, deleteTask, markComplete, markIncomplete }}>
       {children}
     </TasksContext.Provider>
   );
