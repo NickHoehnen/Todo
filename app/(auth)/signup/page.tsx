@@ -77,7 +77,7 @@ export default function SignUpPage() {
         phone,
       };
       const actionCodeSettings = {
-        url: 'http://localhost:3000/verify-email',
+        url: 'https://todoappbackend1--todoapp-c1bf4.us-east5.hosted.app/verify-email',
         handleCodeInApp: true,
       }
       sendEmailVerification(userCredential.user, actionCodeSettings)
