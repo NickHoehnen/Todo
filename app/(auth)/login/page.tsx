@@ -28,7 +28,8 @@ export default function LoginPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // formData reflects current form state
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     // Clear field-specific error when user types
@@ -62,7 +63,13 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, formData.email, formData.password);
+      const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
+      await userCredential.user.reload();
+      if(!userCredential.user.emailVerified) {
+        setErrorMsg("Please verify your account by using the link sent to your email before logging in");
+        router.push('verify-email')
+        return;
+      }
       router.push("/dashboard");
     } catch (err: any) {
       // Friendly messages for common Firebase Auth errors
@@ -79,6 +86,7 @@ export default function LoginPage() {
         default:
           setErrorMsg("An error occurred during login. Please try again.");
       }
+    } finally {
       setLoading(false);
     }
   };
@@ -97,7 +105,7 @@ export default function LoginPage() {
         variant="filled"
         margin="normal"
         value={formData.email}
-        onChange={handleChange}
+        onChange={handleFormChange}
         error={!!errors.email}
         helperText={errors.email}
       />
@@ -110,7 +118,7 @@ export default function LoginPage() {
         variant="filled"
         margin="normal"
         value={formData.password}
-        onChange={handleChange}
+        onChange={handleFormChange}
         error={!!errors.password}
         helperText={errors.password}
       />

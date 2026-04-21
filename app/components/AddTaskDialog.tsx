@@ -5,7 +5,6 @@ import { Task } from "@/types/Task";
 import { useAuth } from "@/context/AuthContext";
 import { useTasks } from "@/context/TasksContext";
 import { useExpansion } from "@/context/ExpandedDatesContext";
-import { DemoContainer } from '@mui/x-date-pickers/internals/demo';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -21,7 +20,6 @@ export default function AddTaskDialog({ open, onClose }: AddTaskDialogProps) {
   const { addTask, addingTask } = useTasks();
   const { expandedDates, toggleDate } = useExpansion();
 
-  // Form state is now isolated here!
   const [taskTitle, setTaskTitle] = useState("");
   const [dueDate, setDueDate] = useState<Dayjs | null>(dayjs());
 
@@ -68,7 +66,6 @@ export default function AddTaskDialog({ open, onClose }: AddTaskDialogProps) {
                 label="Due Date" 
                 value={dueDate} 
                 onChange={(newValue) => setDueDate(newValue)}
-                // Ensure the picker fills the width like other fields
                 slotProps={{ textField: { fullWidth: true, required: true } }} 
               />
             </LocalizationProvider>

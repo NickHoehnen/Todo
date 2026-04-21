@@ -11,6 +11,17 @@ interface TodosPageProps {
 export default function TodosPage({ params }: TodosPageProps) {
   const { id } = use(params); 
   const { tasks, loading } = useTasks();
+
+  const badgeSx = {
+    color: 'black',
+    px: 1.5,
+    py: 0.5,
+    borderRadius: '16px',
+    display: 'inline-block',
+    mr: 1,
+    verticalAlign: 'middle',
+    fontWeight: 'bold', // Consistent across all badges
+  };
   
   const todoData = useMemo(() => tasks.find(task => task.id === id), [tasks, id]);
 
@@ -39,33 +50,26 @@ export default function TodosPage({ params }: TodosPageProps) {
       </Typography>
       
       <Box sx={{ mb: 2 }}>
-        {todoData.completed ? ( // FIX 2: Use .completed consistently
-          <Typography variant="overline" color="success.main" sx={{ fontSize: '1rem' }}>
-            ✓ Status: Completed
+        {todoData.completed ? (
+          <Typography variant="overline" sx={{ ...badgeSx, bgcolor: 'success.main' }}>
+            Completed
           </Typography>
         ) : (
-          <Box>
+          <>
             {isPastDue && (
-              <Typography 
-                variant="caption" 
-                sx={{ 
-                  bgcolor: 'error.main', 
-                  color: 'white', 
-                  px: 1.5, 
-                  py: 0.5, 
-                  borderRadius: '16px', // 'full' isn't a valid MUI borderRadius value, use px
-                  display: 'inline-block',
-                  mr: 1,
-                  verticalAlign: 'middle'
-                }}
-              >
-                OVERDUE
+              <Typography variant="overline" sx={{ ...badgeSx, bgcolor: 'error.main' }}>
+                Overdue
               </Typography>
             )}
-            <Typography variant="h6" color="text.secondary" component="span" sx={{ verticalAlign: 'middle' }}>
+            <Typography 
+              variant="h6" 
+              color="text.secondary" 
+              component="span" 
+              sx={{ verticalAlign: 'middle' }}
+            >
               Due: {todoData.dueDate.toDate().toLocaleDateString()}
             </Typography>
-          </Box>
+          </>
         )}
       </Box>
     </Box>

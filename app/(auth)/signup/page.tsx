@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { User } from "@/types/user";
 import { doc, setDoc } from "firebase/firestore";
@@ -68,23 +68,23 @@ export default function SignUpPage() {
     try {
       const { email, password, firstName, lastName, phone } = formData;
 
-      // 1. Create Auth User
+      // Create the user account and a new user doc reflecting the account info
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-
-      // 2. Prepare Firestore Document
       const userDoc: User = {
         firstName,
         lastName,
         email,
         phone,
-        // Add createdAt if your User type supports it
-        // createdAt: new Date().toISOString(),
       };
+      const actionCodeSettings = {
+        url: 'http://localhost:3000/verify-email',
+        handleCodeInApp: true,
+      }
+      sendEmailVerification(userCredential.user, actionCodeSettings)
 
-      // 3. Save to Firestore
       await setDoc(doc(db, "users", userCredential.user.uid), userDoc);
 
-      router.push("/dashboard");
+      router.push("/verify-email");
     } catch (err: any) {
       // Map Firebase errors to human-readable strings
       if (err.code === "auth/email-already-in-use") {
@@ -196,16 +196,7 @@ export default function SignUpPage() {
       >
         {loading ? "Creating Account..." : "Sign Up"}
       </Button>
-
-      {/* <Button 
-        fullWidth 
-        sx={{ mt: 1 }} 
-        onClick={() => router.replace("/login")}
-        disabled={loading}
-        type="button"
-      >
-        Already have an account? Login
-      </Button> */}
+      
       <Link href='/login'>
         <Typography color="primary" align="center" mt={2}>Already have an account? Login</Typography>
       </Link>

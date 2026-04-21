@@ -61,13 +61,15 @@ export default function Dashboard() {
   const hasAutoExpanded = useRef(false);
 
   useEffect(() => {
-    if (!loading && !hasAutoExpanded.current && filteredTasksByDate[todayStr]) {
-      if (!expandedDates.has(todayStr)) {
-        toggleDate(todayStr);
+    if (!loading && filteredTasksByDate[todayStr]) {
+      if (!hasAutoExpanded.current) {
+        if (!expandedDates.has(todayStr)) {
+          toggleDate(todayStr);
+        }
+        hasAutoExpanded.current = true;
       }
-      hasAutoExpanded.current = true; // Mark as expanded
     }
-  }, [loading, filteredTasksByDate, todayStr, expandedDates, toggleDate]);
+  }, [loading, filteredTasksByDate, todayStr, toggleDate, expandedDates]);
 
   const expandAll = () => setExpandedDates(new Set(allDateKeys));
   const collapseAll = () => setExpandedDates(new Set());
@@ -137,7 +139,7 @@ export default function Dashboard() {
           </Button>
         </Stack>
 
-        <Stack direction="row" justifyContent="space-between" spacing={1} sx={{ mb: 1 }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ mb: 1 }}>
           <FormControlLabel 
             control={ <Switch checked={showCompletedTasks} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setShowCompletedTasks(e.target.checked)} /> }
             label="Show Completed"
@@ -153,12 +155,14 @@ export default function Dashboard() {
         <TransitionGroup>
           {Object.entries(filteredTasksByDate).map(([dueDate, groupTasks]) => {
             
-            const isOpen = searchTerm !== "" || expandedDates.has(dueDate); 
+            const isToday = dueDate === todayStr;
+            // A date is open if: searching, it's manually expanded, OR it's Today and we haven't auto-expanded yet
+            const isOpen = searchTerm !== "" || expandedDates.has(dueDate) || (isToday && !hasAutoExpanded.current);
 
             return (
               <Collapse key={dueDate}> 
-                <Box sx={{ mb: 2 }}>
-                  
+                <Box>
+                  {/* dueDate dropdown */}
                   <ButtonBase 
                     onClick={() => toggleDate(dueDate)} 
                     sx={{ 
@@ -166,6 +170,7 @@ export default function Dashboard() {
                       justifyContent: 'space-between', 
                       width: '100%', 
                       px: 1, py: 0.5,
+                      mb: 1,
                       borderRadius: 1,
                       '&:hover .dueDateLabel': { color: 'primary.main' }
                     }}
@@ -192,16 +197,20 @@ export default function Dashboard() {
                     </Stack>
                     <KeyboardArrowDown sx={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.3s' }} />
                   </ButtonBase>
-
-                  <Collapse in={isOpen}>
-                    <TransitionGroup component={Stack} spacing={1} sx={{ mt: 1 }}>
-                      {groupTasks.map(task => (
-                        <Collapse key={task.id}>
-                          <TaskListItem taskMeta={task} />
-                        </Collapse>
-                      ))}
-                    </TransitionGroup>
-                  </Collapse>
+                  
+                  {/* Tasks List */}
+                  <Box>
+                    <Collapse in={isOpen}> 
+                      <TransitionGroup sx={{ mt: 1 }}>
+                        {groupTasks.map(task => (
+                          // Individual Task
+                          <Collapse key={task.id}>
+                            <TaskListItem taskMeta={task} />
+                          </Collapse>
+                        ))}
+                      </TransitionGroup>
+                    </Collapse>
+                  </Box>
 
                 </Box>
               </Collapse>

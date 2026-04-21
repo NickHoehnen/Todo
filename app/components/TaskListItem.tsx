@@ -3,7 +3,8 @@
 import { 
   Avatar, IconButton, ListItem, ListItemAvatar, ListItemText, 
   ListItemButton, Menu, MenuItem, Dialog, 
-  DialogTitle, DialogContent, DialogContentText, DialogActions, Button 
+  DialogTitle, DialogContent, DialogContentText, DialogActions, Button, 
+  Typography
 } from "@mui/material";
 import { Task } from "@/types/Task";
 import { MoreHoriz, Person, Edit, Delete, Check, DoNotDisturb } from "@mui/icons-material";
@@ -67,13 +68,15 @@ export default function TaskListItem({ taskMeta }: TaskListItemProps) {
         disablePadding
         sx={{
           width: '100%',
+          mb: 1,
           border: 1.5,
           borderRadius: 2,
           borderColor: 'divider',
           bgcolor: 'background.paper',
           overflow: 'hidden',
-          transition: 'border-color 0.2s',
-          '&:hover': { borderColor: 'primary.light' }
+          transition: 'all 0.2s ',
+          '&:hover': { borderColor: 'primary.light' },
+          '&:hover .taskTitle': { } // If you want something else to be animated when the task item is hovered
         }}
         secondaryAction={
           <IconButton sx={{ mr: { xs: 0, sm: 1} }} edge="end" onClick={handleMenuOpen}>
@@ -88,7 +91,7 @@ export default function TaskListItem({ taskMeta }: TaskListItemProps) {
             </Avatar>
           </ListItemAvatar>
           <ListItemText
-            primary={taskMeta.task}
+            primary={<Typography className="taskTitle">{taskMeta.task}</Typography>}
             secondary={secondaryText}
             slotProps={{ 
               secondary: { 
