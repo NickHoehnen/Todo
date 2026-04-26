@@ -61,7 +61,7 @@ export default function Dashboard() {
   const hasAutoExpanded = useRef(false);
 
   useEffect(() => {
-    if (!loading && filteredTasksByDate[todayStr]) {
+    if (!loading && !hasAutoExpanded.current && filteredTasksByDate[todayStr]) {
       if (!hasAutoExpanded.current) {
         if (!expandedDates.has(todayStr)) {
           toggleDate(todayStr);
@@ -157,7 +157,7 @@ export default function Dashboard() {
             
             const isToday = dueDate === todayStr;
             // A date is open if: searching, it's manually expanded, OR it's Today and we haven't auto-expanded yet
-            const isOpen = searchTerm !== "" || expandedDates.has(dueDate) || (isToday && !hasAutoExpanded.current);
+            const isOpen = searchTerm !== "" || expandedDates.has(dueDate);
 
             return (
               <Collapse key={dueDate}> 

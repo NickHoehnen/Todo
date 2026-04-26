@@ -4,23 +4,35 @@ import {
   Avatar, IconButton, ListItem, ListItemAvatar, ListItemText, 
   ListItemButton, Menu, MenuItem, Dialog, 
   DialogTitle, DialogContent, DialogContentText, DialogActions, Button, 
-  Typography
+  Typography, TextField, Box
 } from "@mui/material";
 import { Task } from "@/types/Task";
 import { MoreHoriz, Person, Edit, Delete, Check, DoNotDisturb } from "@mui/icons-material";
 import Link from "next/link";
 import { useState } from "react";
 import { useTasks } from "@/context/TasksContext";
+import { Dayjs } from "dayjs";
+import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import dayjs from "dayjs";
+import { Timestamp } from "firebase/firestore";
 
 interface TaskListItemProps {
   taskMeta: Task;
 }
 
+interface NewValuesType {
+  title: string;
+  dueDate: Dayjs | null;
+}
+
 export default function TaskListItem({ taskMeta }: TaskListItemProps) {
   const [menuAnchorElem, setMenuAnchorElem] = useState<HTMLElement | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [newValues, setNewValues] = useState<NewValuesType>({ title: '', dueDate: null });
 
-  const { deleteTask, markComplete, markIncomplete } = useTasks();
+  const { deleteTask, markComplete, markIncomplete, updateTask } = useTasks(); 
   
   const menuOpen = Boolean(menuAnchorElem);
   const completed = taskMeta.completed;
@@ -40,6 +52,7 @@ export default function TaskListItem({ taskMeta }: TaskListItemProps) {
     markComplete(taskMeta.id);
     handleMenuClose();
   };
+  
   const handleMarkIncomplete = () => {
     markIncomplete(taskMeta.id);
     handleMenuClose();
@@ -55,12 +68,68 @@ export default function TaskListItem({ taskMeta }: TaskListItemProps) {
     deleteTask(taskMeta.id);
   };
 
-  let secondaryText = "No date set";
+  const handleStartEdit = () => {
+    setIsEditing(true);
+    setNewValues({ 
+      title: taskMeta.task, 
+      dueDate: taskMeta.dueDate ? dayjs(taskMeta.dueDate.toDate()) : null 
+    });
+    handleMenuClose();
+  };
+
+  const handleSaveEdit = async () => {
+    if (updateTask) {
+      await updateTask({ 
+        ...taskMeta,
+        task: newValues.title, 
+        dueDate: newValues.dueDate ? Timestamp.fromDate(newValues.dueDate.toDate()) : taskMeta.dueDate
+      });
+    }
+    setIsEditing(false);
+  };
+
+  let statusLabel = "No date set";
   if (completed) {
-    secondaryText = "Completed";
+    statusLabel = "Completed";
   } else if (hasDueDate) {
-    secondaryText = `${isPastDue ? "Overdue: " : "Due: "} ${taskMeta.dueDate.toDate().toDateString()}`;
+    statusLabel = `${isPastDue ? "Overdue: " : "Due: "} ${taskMeta.dueDate.toDate().toDateString()}`;
   }
+
+  const handleInputClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const editTitle = (
+    <TextField 
+      label="Task Description" 
+      value={newValues.title}
+      onChange={(e) => setNewValues(prev => ({ ...prev, title: e.target.value }))}
+      onClick={handleInputClick}
+      size="small"
+      sx={{ width: "90%" }}
+      required
+      autoFocus
+    />
+  );
+
+  const editDueDate = (
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <DatePicker
+        label="Due Date" 
+        value={newValues.dueDate} 
+        onChange={(newValue) => setNewValues(prev => ({ ...prev, dueDate: newValue }))}
+        sx={{ width: "90%" }}
+        slotProps={{ 
+          textField: { 
+            required: true, 
+            size: "small",
+            onClick: handleInputClick 
+          } 
+        }} 
+      />
+    </LocalizationProvider>
+  );
 
   return (
     <>
@@ -76,30 +145,49 @@ export default function TaskListItem({ taskMeta }: TaskListItemProps) {
           overflow: 'hidden',
           transition: 'all 0.2s ',
           '&:hover': { borderColor: 'primary.light' },
-          '&:hover .taskTitle': { } // If you want something else to be animated when the task item is hovered
         }}
         secondaryAction={
-          <IconButton sx={{ mr: { xs: 0, sm: 1} }} edge="end" onClick={handleMenuOpen}>
-            <MoreHoriz />
+          <IconButton 
+            sx={{ mr: { xs: 0, sm: 1} }} 
+            edge="end" 
+            onClick={isEditing ? handleSaveEdit : handleMenuOpen}
+            color={isEditing ? "success" : "default"}
+          >
+            { isEditing ? <Check /> : <MoreHoriz /> }
           </IconButton>
         }
       >
-        <ListItemButton component={Link} href={`/tasks/${taskMeta.id}`} sx={{ p: 2 }}>
+        <ListItemButton 
+          component={isEditing ? "div" : Link} 
+          href={isEditing ? undefined : `/tasks/${taskMeta.id}`} 
+          sx={{ p: 2 }}
+          disableRipple={isEditing}
+        >
           <ListItemAvatar>
             <Avatar sx={{ bgcolor: 'primary.light', color: 'primary.dark' }}>
               <Person />
             </Avatar>
           </ListItemAvatar>
-          <ListItemText
-            primary={<Typography className="taskTitle">{taskMeta.task}</Typography>}
-            secondary={secondaryText}
-            slotProps={{ 
-              secondary: { 
-                color: (isPastDue && !completed) ? 'error.main' : completed ? 'success.main' : 'text.secondary' 
-              }
-            }}
-            primaryTypographyProps={{ fontWeight: 'medium' }}
-          />
+          
+          {/* FIXED: Conditionally render a Box for inputs, bypassing ListItemText entirely to avoid <p> nesting errors */}
+          {isEditing ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1, gap: 1.5 }}>
+              {editTitle}
+              {editDueDate}
+            </Box>
+          ) : (
+            <ListItemText
+              primary={<Typography className="taskTitle">{taskMeta.task}</Typography>}
+              secondary={statusLabel}
+              slotProps={{ 
+                secondary: { 
+                  color: (isPastDue && !completed) ? 'error.main' : completed ? 'success.main' : 'text.secondary' 
+                }
+              }}
+              primaryTypographyProps={{ fontWeight: 'medium' }}
+            />
+          )}
+
         </ListItemButton>
 
         <Menu 
@@ -109,7 +197,7 @@ export default function TaskListItem({ taskMeta }: TaskListItemProps) {
           anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
           transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         >
-          <MenuItem onClick={handleMenuClose} component={Link} href={`/tasks/${taskMeta.id}/edit`}>
+          <MenuItem onClick={handleStartEdit}>
             <Edit fontSize="small" sx={{ mr: 1.5 }} /> Edit
           </MenuItem>
           {

@@ -13,6 +13,7 @@ interface TasksContextType {
   markingIncomplete: boolean;
   addTask: (task: Omit<Task, 'id'>) => Promise<boolean>;
   deleteTask: (taskId: string) => Promise<boolean>;
+  updateTask: (task: Task) => Promise<boolean>;
   markComplete: (taskId: string) => Promise<void>;
   markIncomplete: (taskId: string) => Promise<void>
 }
@@ -27,6 +28,7 @@ export const TasksProvider = ({ children }: { children: React.ReactNode }) => {
   const [deletingTask, setDeletingTask] = useState(false);
   const [markingComplete, setMarkingComplete] = useState(false);
   const [markingIncomplete, setMarkingIncomplete] = useState(false);
+  const [updating, setUpdating] = useState(false);
   const { user } = useAuth();
 
   const addTask = async (task: Omit<Task, 'id'>) => {
@@ -56,13 +58,27 @@ export const TasksProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }
 
+  const updateTask = async (task: Task) => {
+    try {
+      setUpdating(true);
+      const docRef = doc(db, "tasks", task.id);
+      await updateDoc(docRef, task);
+      return true;
+    } catch(error) {
+      console.error("Error updating task", "Task ID: " + task.id, error);
+      return false;
+    } finally {
+      setUpdating(false);
+    }
+  }
+
   const markComplete = async (taskId: string) => {
     try {
       setMarkingComplete(true);
       const docRef = doc(db, "tasks", taskId);
       await updateDoc(docRef, { completed: true });
     } catch(error) {
-      console.error("Error marking task complete", `taskId ${taskId}`, error);
+      console.error("Error marking task complete", "Task ID: " + taskId, error);
     } finally {
       setMarkingComplete(false);
     }
@@ -112,7 +128,7 @@ export const TasksProvider = ({ children }: { children: React.ReactNode }) => {
   }, [user]);
 
   return (
-    <TasksContext.Provider value={{ tasks, loading, addingTask, deletingTask, markingComplete, markingIncomplete, addTask, deleteTask, markComplete, markIncomplete }}>
+    <TasksContext.Provider value={{ tasks, loading, addingTask, deletingTask, markingComplete, markingIncomplete, addTask, deleteTask, updateTask, markComplete, markIncomplete }}>
       {children}
     </TasksContext.Provider>
   );
