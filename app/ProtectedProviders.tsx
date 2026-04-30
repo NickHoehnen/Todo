@@ -2,13 +2,16 @@
 
 import { ExpandedDatesProvider } from "@/context/ExpandedDatesContext";
 import { TasksProvider } from "@/context/TasksContext";
+import UsersProvider from "@/context/UsersContext";
 
 export default function ProtectedProviders({ children }: { children: React.ReactNode }) {
   return (
-    <TasksProvider>
-      <ExpandedDatesProvider>
-        { children }
-      </ExpandedDatesProvider>
-    </TasksProvider>
+    <UsersProvider>
+      <TasksProvider>
+        <ExpandedDatesProvider>
+          { children }
+        </ExpandedDatesProvider>
+      </TasksProvider>
+    </UsersProvider>
   )
 }

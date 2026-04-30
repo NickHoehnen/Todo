@@ -1,8 +1,9 @@
 import { Task } from "@/types/Task";
 import { createContext, useContext, useEffect, useState } from "react";
 import { useAuth } from "./AuthContext";
-import { addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, query, setDoc, updateDoc, where } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, onSnapshot, query, updateDoc, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { User } from "@/types/user";
 
 interface TasksContextType {
   tasks: Task[];
@@ -11,14 +12,15 @@ interface TasksContextType {
   deletingTask: boolean;
   markingComplete: boolean;
   markingIncomplete: boolean;
+  assigningUser: boolean;
   addTask: (task: Omit<Task, 'id'>) => Promise<boolean>;
   deleteTask: (taskId: string) => Promise<boolean>;
   updateTask: (task: Task) => Promise<boolean>;
+  assignUser: (task: Task, user: User) => Promise<void>; // FIX 2: Added to interface
   markComplete: (taskId: string) => Promise<void>;
-  markIncomplete: (taskId: string) => Promise<void>
+  markIncomplete: (taskId: string) => Promise<void>;
 }
 
-// Ensure the default empty function matches the new Promise signature
 const TasksContext = createContext<TasksContextType | undefined>(undefined);
 
 export const TasksProvider = ({ children }: { children: React.ReactNode }) => {
@@ -28,6 +30,7 @@ export const TasksProvider = ({ children }: { children: React.ReactNode }) => {
   const [deletingTask, setDeletingTask] = useState(false);
   const [markingComplete, setMarkingComplete] = useState(false);
   const [markingIncomplete, setMarkingIncomplete] = useState(false);
+  const [assigningUser, setAssigningUser] = useState(false);
   const [updating, setUpdating] = useState(false);
   const { user } = useAuth();
 
@@ -61,16 +64,49 @@ export const TasksProvider = ({ children }: { children: React.ReactNode }) => {
   const updateTask = async (task: Task) => {
     try {
       setUpdating(true);
-      const docRef = doc(db, "tasks", task.id);
-      await updateDoc(docRef, task);
+      
+      const { id, ...taskData } = task;
+      const docRef = doc(db, "tasks", id);
+      
+      await updateDoc(docRef, taskData);
+      
       return true;
     } catch(error) {
-      console.error("Error updating task", "Task ID: " + task.id, error);
+      console.error(`Error updating task. Task ID: ${task.id}`, error);
       return false;
     } finally {
       setUpdating(false);
     }
   }
+
+  const assignUser = async (task: Task, user: User) => {
+    try {
+      setAssigningUser(true);
+      const taskDoc = tasks.find((thisTask) => thisTask.id === task.id);
+
+      if (!taskDoc) {
+        throw new Error("Task not found");
+      }
+
+      const assignedTo = taskDoc.assignedTo || [];
+
+      if (assignedTo.includes(user.id)) {
+        console.warn("User is already assigned to this task.");
+        return; 
+      }
+
+      const updatedAssignedTo = [...assignedTo, user.id];
+
+      // FIX 1: Spread the task FIRST, then overwrite the assignedTo property
+      await updateTask({ ...task, assignedTo: updatedAssignedTo });
+
+    } catch (error) {
+      console.error(error); 
+      throw new Error(`Error assigning user ${user.id} to task ${task.id}`);
+    } finally {
+      setAssigningUser(false);
+    }
+  };
 
   const markComplete = async (taskId: string) => {
     try {
@@ -109,7 +145,6 @@ export const TasksProvider = ({ children }: { children: React.ReactNode }) => {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      // Notice setLoading(true) is gone from here!
       const tasksData = snapshot.docs.map((docData) => {
         return {
           id: docData.id,
@@ -118,23 +153,23 @@ export const TasksProvider = ({ children }: { children: React.ReactNode }) => {
       }) as Task[];
 
       setTasks(tasksData);
-      setLoading(false); // Turns off the initial loader once data arrives
+      setLoading(false); 
     }, (error) => {
       if(error.code !== "permission-denied") console.error(error);
-      setLoading(false); // Prevents an infinite spinner if there's a database error
+      setLoading(false); 
     });
 
     return unsubscribe;
   }, [user]);
 
   return (
-    <TasksContext.Provider value={{ tasks, loading, addingTask, deletingTask, markingComplete, markingIncomplete, addTask, deleteTask, updateTask, markComplete, markIncomplete }}>
+    // FIX 3: Added `assignUser` to the value object
+    <TasksContext.Provider value={{ tasks, loading, addingTask, deletingTask, markingComplete, markingIncomplete, assigningUser, addTask, deleteTask, updateTask, assignUser, markComplete, markIncomplete }}>
       {children}
     </TasksContext.Provider>
   );
 }
 
-// Grab the context, first checking if it exists/ has been initialized
 export const useTasks = () => {
   const context = useContext(TasksContext);
   if(!context) throw new Error("useTasks must be used within a TasksProvider");

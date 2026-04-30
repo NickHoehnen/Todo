@@ -1,8 +1,14 @@
 'use client'
 
-import { Typography, CircularProgress, Box } from "@mui/material"
-import { use, useMemo } from "react"
+import { 
+  Typography, CircularProgress, Box, Skeleton, Stack, Avatar, 
+  ButtonBase, MenuItem, Popper, Grow, Paper, ClickAwayListener, MenuList 
+} from "@mui/material"
+import { use, useEffect, useMemo, useRef, useState } from "react"
 import { useTasks } from "@/context/TasksContext"
+import { useUsers } from "@/context/UsersContext"
+import { Add, Person } from "@mui/icons-material"
+import { User } from "@/types/user"
 
 interface TodosPageProps {
   params: Promise<{ id: string }>
@@ -10,7 +16,13 @@ interface TodosPageProps {
 
 export default function TodosPage({ params }: TodosPageProps) {
   const { id } = use(params); 
-  const { tasks, loading } = useTasks();
+  const { tasks, loading, assignUser } = useTasks(); 
+  const { users, usersLoading } = useUsers();
+
+  // ... (state and useMemos stay the same)
+
+  const [addOpen, setAddOpen] = useState(false); 
+  const addAnchorEl = useRef<HTMLButtonElement>(null);
 
   const badgeSx = {
     color: 'black',
@@ -20,20 +32,75 @@ export default function TodosPage({ params }: TodosPageProps) {
     display: 'inline-block',
     mr: 1,
     verticalAlign: 'middle',
-    fontWeight: 'bold', // Consistent across all badges
+    fontWeight: 'bold', 
   };
+
+  // 2. Complete the handleAssignUser function
+  const handleAssignUser = async (user: User) => {
+    if (!todoData) return; // Safety check
+
+    try {
+      // Call the context function we built earlier
+      await assignUser(todoData, user);
+    } catch (error) {
+      console.error("Failed to assign user:", error);
+      // Optional: Add a toast/snackbar notification here to inform the user
+    } finally {
+      // Close the menu whether the assignment succeeded or failed
+      setAddOpen(false);
+    }
+  }
   
   const todoData = useMemo(() => tasks.find(task => task.id === id), [tasks, id]);
 
-  // FIX 1: Added explicit return and fixed logic
   const isPastDue = useMemo(() => {
     if (!todoData || todoData.completed) return false;
-    
-    // Check if the due date is in the past
     return new Date() > todoData.dueDate.toDate();
   }, [todoData]);
 
-  if (loading) {
+  // FIX: Properly filtering users based on the task's assignedTo array
+  const assignedUsers = useMemo(() => {
+    if (!users || !todoData || !todoData.assignedTo) return undefined;
+    return users.filter(user => todoData.assignedTo.includes(user.id));
+  }, [users, todoData]);
+  
+  const unassignedUsers = useMemo(() => {
+    if (!users || !todoData || !todoData.assignedTo) return undefined;
+    return users.filter(user => !todoData.assignedTo.includes(user.id));
+  }, [users, todoData])
+
+  const handleToggle = () => {
+    setAddOpen((prevOpen) => !prevOpen);
+  };
+
+  const handleClose = (event: Event | React.SyntheticEvent) => {
+    if (
+      addAnchorEl.current &&
+      addAnchorEl.current.contains(event.target as HTMLElement)
+    ) {
+      return;
+    }
+    setAddOpen(false);
+  };
+
+  function handleListKeyDown(event: React.KeyboardEvent) {
+    if (event.key === 'Tab') {
+      event.preventDefault();
+      setAddOpen(false);
+    } else if (event.key === 'Escape') {
+      setAddOpen(false);
+    }
+  }
+
+  const prevOpen = useRef(addOpen);
+  useEffect(() => {
+    if (prevOpen.current === true && addOpen === false) {
+      addAnchorEl.current?.focus();
+    }
+    prevOpen.current = addOpen;
+  }, [addOpen]);
+
+  if (loading || usersLoading) { // Also waiting for users to load
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}>
         <CircularProgress size={60} />
@@ -72,6 +139,68 @@ export default function TodosPage({ params }: TodosPageProps) {
           </>
         )}
       </Box>
+
+      <Stack direction="row" alignItems="center" spacing={1}>
+        { assignedUsers === undefined
+          ? <Stack direction="row" spacing={1}>
+              <Skeleton variant="circular" width={40} height={40} />
+              <Skeleton variant="circular" width={40} height={40} />
+              <Skeleton variant="circular" width={40} height={40} />
+            </Stack>
+          : <Stack direction="row" spacing={1}>
+              {
+                assignedUsers.map(user => (
+                  <Avatar key={user.id}><Person /></Avatar>
+                ))
+              }
+            </Stack>
+        }
+        
+        {/* FIX: Attached the ref and updated onClick */}
+        <ButtonBase 
+          ref={addAnchorEl} 
+          sx={{ border: '2px solid', borderColor: 'divider', borderRadius: '50%', width: 40, height: 40 }} 
+          onClick={handleToggle}
+        >
+          <Add />
+        </ButtonBase>
+
+        <Popper
+          open={addOpen}
+          anchorEl={addAnchorEl.current}
+          role={undefined}
+          placement="bottom-start"
+          transition
+          disablePortal
+        >
+          {({ TransitionProps, placement }) => (
+            <Grow
+              {...TransitionProps}
+              style={{
+                transformOrigin:
+                  placement === 'bottom-start' ? 'left top' : 'left bottom',
+              }}
+            >
+              <Paper sx={{ mt: 1 }}>
+                <ClickAwayListener onClickAway={handleClose}>
+                  <MenuList
+                    autoFocusItem={addOpen}
+                    id="composition-menu"
+                    aria-labelledby="composition-button"
+                    onKeyDown={handleListKeyDown}
+                  >
+                    {unassignedUsers?.map(user => (
+                      <MenuItem key={user.id} onClick={() => handleAssignUser(user)}>
+                        {user.firstName} {user.lastName}
+                      </MenuItem>
+                    ))}
+                  </MenuList>
+                </ClickAwayListener>
+              </Paper>
+            </Grow>
+          )}
+        </Popper>
+      </Stack>
     </Box>
   );
 }

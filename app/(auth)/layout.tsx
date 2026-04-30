@@ -1,4 +1,7 @@
+// (auth) layout
+
 'use client'
+
 import { Container, Paper } from "@mui/material";
 
 export default function AuthLayout({
