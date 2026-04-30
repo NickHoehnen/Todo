@@ -71,6 +71,7 @@ export default function SignUpPage() {
       // Create the user account and a new user doc reflecting the account info
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const userDoc: User = {
+        id: userCredential.user.uid,
         firstName,
         lastName,
         email,
