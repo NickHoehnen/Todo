@@ -10,6 +10,7 @@ interface TasksContextType {
   loading: boolean;
   addingTask: boolean;
   deletingTask: boolean;
+  updatingTask: boolean;
   markingComplete: boolean;
   markingIncomplete: boolean;
   assigningUser: boolean;
@@ -28,10 +29,10 @@ export const TasksProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [addingTask, setAddingTask] = useState(false);
   const [deletingTask, setDeletingTask] = useState(false);
+  const [updatingTask, setUpdatingTask] = useState(false);
   const [markingComplete, setMarkingComplete] = useState(false);
   const [markingIncomplete, setMarkingIncomplete] = useState(false);
   const [assigningUser, setAssigningUser] = useState(false);
-  const [updating, setUpdating] = useState(false);
   const { user } = useAuth();
 
   const addTask = async (task: Omit<Task, 'id'>) => {
@@ -63,7 +64,7 @@ export const TasksProvider = ({ children }: { children: React.ReactNode }) => {
 
   const updateTask = async (task: Task) => {
     try {
-      setUpdating(true);
+      setUpdatingTask(true);
       
       const { id, ...taskData } = task;
       const docRef = doc(db, "tasks", id);
@@ -75,7 +76,7 @@ export const TasksProvider = ({ children }: { children: React.ReactNode }) => {
       console.error(`Error updating task. Task ID: ${task.id}`, error);
       return false;
     } finally {
-      setUpdating(false);
+      setUpdatingTask(false);
     }
   }
 
@@ -164,7 +165,7 @@ export const TasksProvider = ({ children }: { children: React.ReactNode }) => {
 
   return (
     // FIX 3: Added `assignUser` to the value object
-    <TasksContext.Provider value={{ tasks, loading, addingTask, deletingTask, markingComplete, markingIncomplete, assigningUser, addTask, deleteTask, updateTask, assignUser, markComplete, markIncomplete }}>
+    <TasksContext.Provider value={{ tasks, loading, addingTask, deletingTask, updatingTask, markingComplete, markingIncomplete, assigningUser, addTask, deleteTask, updateTask, assignUser, markComplete, markIncomplete }}>
       {children}
     </TasksContext.Provider>
   );

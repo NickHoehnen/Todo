@@ -2,13 +2,15 @@
 
 import { 
   Typography, CircularProgress, Box, Skeleton, Stack, Avatar, 
-  ButtonBase, MenuItem, Popper, Grow, Paper, ClickAwayListener, MenuList 
+  ButtonBase, MenuItem, Popper, Grow, Paper, ClickAwayListener, MenuList, 
+  Tooltip
 } from "@mui/material"
 import { use, useEffect, useMemo, useRef, useState } from "react"
 import { useTasks } from "@/context/TasksContext"
 import { useUsers } from "@/context/UsersContext"
 import { Add, Person } from "@mui/icons-material"
 import { User } from "@/types/user"
+import { useAuth } from "@/context/AuthContext"
 
 interface TodosPageProps {
   params: Promise<{ id: string }>
@@ -18,30 +20,83 @@ export default function TodosPage({ params }: TodosPageProps) {
   const { id } = use(params); 
   const { tasks, loading, assignUser } = useTasks(); 
   const { users, usersLoading } = useUsers();
-
-  // ... (state and useMemos stay the same)
+  const { user } = useAuth();
 
   const [addOpen, setAddOpen] = useState(false); 
   const addAnchorEl = useRef<HTMLButtonElement>(null);
 
+  const taskData = useMemo(() => tasks.find(task => task.id === id), [tasks, id]);
+
+  const isPastDue = useMemo(() => {
+    if (!taskData || taskData.completed) return false;
+    return new Date() > taskData.dueDate.toDate();
+  }, [taskData]);
+
+  const daysLeft = useMemo(() => {
+    if(!taskData) return null;
+    const today = Date.now();
+    const diffInMs = taskData.dueDate.toDate().getTime() - today; 
+    const daysLeft = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
+    return daysLeft;
+  }, [taskData]);
+
+  // Completed-green | PastDue-red | 1DayLeft-yellow | default-gray
+  const taskColor = 
+    (taskData?.completed) ?
+      "success.main"
+      : (isPastDue) ?
+          "error.main"
+          : (daysLeft && daysLeft <= 1) ?
+            "warning.main"
+            : "text.secondary";
+
   const badgeSx = {
     color: 'black',
     px: 1.5,
-    py: 0.5,
-    borderRadius: '16px',
+    borderRadius: 2,
     display: 'inline-block',
     mr: 1,
     verticalAlign: 'middle',
     fontWeight: 'bold', 
+    bgcolor: taskColor
   };
+
+  const createdByUser = useMemo(() => {
+    if(!users || !taskData) return null;
+    const u = users.find(thisUser => thisUser.id === taskData?.createdBy);
+    if(!u) return null;
+    return u;
+  }, [users, taskData]);
+
+  // FIX: Properly filtering users based on the task's assignedTo array
+  const assignedUsers = useMemo(() => {
+    if (!users || !taskData || !taskData.assignedTo) return undefined;
+    return users.filter(user => taskData.assignedTo.includes(user.id));
+  }, [users, taskData]);
+  
+  const unassignedUsers = useMemo(() => {
+    if (!users || !taskData || !taskData.assignedTo) return undefined;
+    return users.filter(user => !taskData.assignedTo.includes(user.id));
+  }, [users, taskData])
+
+  const taskStatus = useMemo(
+    () => {
+      if (!taskData) return "Error";
+      if (taskData.completed) return "Completed";
+      if (isPastDue) return "Past Due";
+      if(daysLeft === null) return "...";
+      return `${daysLeft} ${daysLeft > 1 ? "days" : "day"} left`;
+    },
+    [taskData, isPastDue]
+  );
 
   // 2. Complete the handleAssignUser function
   const handleAssignUser = async (user: User) => {
-    if (!todoData) return; // Safety check
+    if (!taskData) return; // Safety check
 
     try {
       // Call the context function we built earlier
-      await assignUser(todoData, user);
+      await assignUser(taskData, user);
     } catch (error) {
       console.error("Failed to assign user:", error);
       // Optional: Add a toast/snackbar notification here to inform the user
@@ -50,24 +105,6 @@ export default function TodosPage({ params }: TodosPageProps) {
       setAddOpen(false);
     }
   }
-  
-  const todoData = useMemo(() => tasks.find(task => task.id === id), [tasks, id]);
-
-  const isPastDue = useMemo(() => {
-    if (!todoData || todoData.completed) return false;
-    return new Date() > todoData.dueDate.toDate();
-  }, [todoData]);
-
-  // FIX: Properly filtering users based on the task's assignedTo array
-  const assignedUsers = useMemo(() => {
-    if (!users || !todoData || !todoData.assignedTo) return undefined;
-    return users.filter(user => todoData.assignedTo.includes(user.id));
-  }, [users, todoData]);
-  
-  const unassignedUsers = useMemo(() => {
-    if (!users || !todoData || !todoData.assignedTo) return undefined;
-    return users.filter(user => !todoData.assignedTo.includes(user.id));
-  }, [users, todoData])
 
   const handleToggle = () => {
     setAddOpen((prevOpen) => !prevOpen);
@@ -108,38 +145,33 @@ export default function TodosPage({ params }: TodosPageProps) {
     );
   }
 
-  if (!todoData) return <Typography variant="h6" sx={{ p: 4 }}>Task not found.</Typography>;
+  if (!taskData) return <Typography variant="h6" sx={{ p: 4 }}>Task not found.</Typography>;
 
   return (
-    <Box sx={{ p: 2, maxWidth: 600, mx: 'auto' }}>
-      <Typography variant="h3" component="h1" gutterBottom>
-        {todoData.task}
-      </Typography>
+    <Stack sx={{ p: 2, maxWidth: 600, mx: 'auto' }} spacing={1}>
       
-      <Box sx={{ mb: 2 }}>
-        {todoData.completed ? (
-          <Typography variant="overline" sx={{ ...badgeSx, bgcolor: 'success.main' }}>
-            Completed
-          </Typography>
-        ) : (
-          <>
-            {isPastDue && (
-              <Typography variant="overline" sx={{ ...badgeSx, bgcolor: 'error.main' }}>
-                Overdue
-              </Typography>
-            )}
-            <Typography 
-              variant="h6" 
-              color="text.secondary" 
-              component="span" 
-              sx={{ verticalAlign: 'middle' }}
-            >
-              Due: {todoData.dueDate.toDate().toLocaleDateString()}
-            </Typography>
-          </>
-        )}
-      </Box>
+      <Stack spacing={2} direction="row" sx={{ mb: 0 }} alignItems="center">
+        {/* Task title */}
+        <Typography variant="h3" component="h1" gutterBottom>
+          {taskData.task}
+        </Typography>
+        {/* Completed status */}
+        <Typography variant="overline" sx={{ ...badgeSx }}>
+          {taskStatus}
+        </Typography>
+      </Stack>
 
+      <Typography>Created by: {createdByUser?.firstName} {createdByUser?.lastName}</Typography>
+      <Typography 
+        variant="h6" 
+        color="text.secondary" 
+        component="span" 
+        sx={{ verticalAlign: 'middle' }}
+      >
+        Due: {taskData.dueDate.toDate().toLocaleDateString()}
+      </Typography>
+
+      {/* Icons for assigned users */}
       <Stack direction="row" alignItems="center" spacing={1}>
         { assignedUsers === undefined
           ? <Stack direction="row" spacing={1}>
@@ -150,21 +182,28 @@ export default function TodosPage({ params }: TodosPageProps) {
           : <Stack direction="row" spacing={1}>
               {
                 assignedUsers.map(user => (
-                  <Avatar key={user.id}><Person /></Avatar>
+                  <Tooltip key={user.id} title={user.email}>
+                    <Avatar key={user.id}>
+                      {/* <Person /> */}
+                      <Typography variant="subtitle2" fontWeight="bold">{user.firstName.charAt(0)} {user.lastName.charAt(0)}</Typography>
+                    </Avatar>
+                  </Tooltip>
                 ))
               }
             </Stack>
         }
         
-        {/* FIX: Attached the ref and updated onClick */}
-        <ButtonBase 
-          ref={addAnchorEl} 
-          sx={{ border: '2px solid', borderColor: 'divider', borderRadius: '50%', width: 40, height: 40 }} 
-          onClick={handleToggle}
-        >
-          <Add />
-        </ButtonBase>
+        <Tooltip title="Assign new user">
+          <ButtonBase 
+            ref={addAnchorEl} 
+            sx={{ border: '2px solid', borderColor: 'divider', borderRadius: '50%', width: 40, height: 40 }} 
+            onClick={handleToggle}
+          >
+            <Add />
+          </ButtonBase>
+        </Tooltip>
 
+        <ClickAwayListener onClickAway={handleClose}>
         <Popper
           open={addOpen}
           anchorEl={addAnchorEl.current}
@@ -181,26 +220,26 @@ export default function TodosPage({ params }: TodosPageProps) {
                   placement === 'bottom-start' ? 'left top' : 'left bottom',
               }}
             >
-              <Paper sx={{ mt: 1 }}>
-                <ClickAwayListener onClickAway={handleClose}>
-                  <MenuList
-                    autoFocusItem={addOpen}
-                    id="composition-menu"
-                    aria-labelledby="composition-button"
-                    onKeyDown={handleListKeyDown}
-                  >
-                    {unassignedUsers?.map(user => (
-                      <MenuItem key={user.id} onClick={() => handleAssignUser(user)}>
-                        {user.firstName} {user.lastName}
-                      </MenuItem>
-                    ))}
-                  </MenuList>
-                </ClickAwayListener>
+              <Paper sx={{ mt: 1, backgroundColor: 'background.elevated', pt: 1 }}>
+                <Typography fontWeight="bold" sx={{ px: 1, pl: 2, userSelect: "none" }}>Assign user</Typography>
+                <MenuList
+                  autoFocusItem={addOpen}
+                  id="composition-menu"
+                  aria-labelledby="composition-button"
+                  onKeyDown={handleListKeyDown}
+                >
+                  {unassignedUsers?.map(user => (
+                    <MenuItem key={user.id} sx={{ py: 1 }} onClick={() => handleAssignUser(user)}>
+                      <Typography variant="button">{user.firstName} {user.lastName}</Typography>
+                    </MenuItem>
+                  ))}
+                </MenuList>
               </Paper>
             </Grow>
           )}
         </Popper>
+        </ClickAwayListener>
       </Stack>
-    </Box>
+    </Stack>
   );
 }

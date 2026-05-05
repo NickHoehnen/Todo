@@ -33,6 +33,7 @@ export default function AddTaskDialog({ open, onClose }: AddTaskDialogProps) {
     
     const newTask: Omit<Task, 'id'> = {
       task: taskTitle,
+      createdBy: user.uid,
       assignedTo: [user.uid],
       dueDate: Timestamp.fromDate(dateValue),
       dateCompleted: null,

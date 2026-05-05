@@ -104,7 +104,7 @@ export default function Dashboard() {
     
       <Box sx={{ width: { xs: '100%', md: '80%', lg: '40rem' } }}>
         <Typography variant="h4" align="left" sx={{ my: 1, width: '100%', fontWeight: 'bold' }}>
-          Schedule
+          My Tasks
         </Typography>
 
         {/* Search bar | Add button */}
@@ -139,15 +139,15 @@ export default function Dashboard() {
           </Button>
         </Stack>
 
-        <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ mb: 1, pr: 1, backgroundColor: 'background.elevated', borderRadius: 2 }}>
           <FormControlLabel 
             control={ <Switch checked={showCompletedTasks} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setShowCompletedTasks(e.target.checked)} /> }
-            label="Show Completed"
+            label={<Typography variant="body2">Show Completed</Typography>}
             sx={{ color: showCompletedTasks ? 'text.primary' : 'text.secondary' }}
           />
           <Box>
-            <Typography component={ButtonBase} onClick={expandAll} sx={{ fontSize: '0.875rem', px: 1, borderRadius: 1, '&:hover': { color: 'info.main' } }}>Expand All</Typography>
-            <Typography component={ButtonBase} onClick={collapseAll} sx={{ fontSize: '0.875rem', color:"text.secondary", px: 1, borderRadius: 1, '&:hover': { color: 'info.main' } }}>Collapse All</Typography>
+            <Typography variant="caption" component={ButtonBase} onClick={expandAll} sx={{ fontSize: '0.875rem', px: 1, borderRadius: 1, '&:hover': { color: 'info.main' } }}>Expand All</Typography>
+            <Typography variant="caption" component={ButtonBase} onClick={collapseAll} sx={{ fontSize: '0.875rem', color:"text.secondary", px: 1, borderRadius: 1, '&:hover': { color: 'info.main' } }}>Collapse All</Typography>
           </Box>
         </Stack>
 

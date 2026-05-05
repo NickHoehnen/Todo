@@ -4,7 +4,8 @@ import {
   Avatar, IconButton, ListItem, ListItemAvatar, ListItemText, 
   ListItemButton, Menu, MenuItem, Dialog, 
   DialogTitle, DialogContent, DialogContentText, DialogActions, Button, 
-  Typography, TextField, Box
+  Typography, TextField, Box,
+  CircularProgress
 } from "@mui/material";
 import { Task } from "@/types/Task";
 import { MoreHoriz, Person, Edit, Delete, Check, DoNotDisturb } from "@mui/icons-material";
@@ -32,7 +33,7 @@ export default function TaskListItem({ taskMeta }: TaskListItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [newValues, setNewValues] = useState<NewValuesType>({ title: '', dueDate: null });
 
-  const { deleteTask, markComplete, markIncomplete, updateTask } = useTasks(); 
+  const { deleteTask, markComplete, markIncomplete, updateTask, updatingTask } = useTasks(); 
   
   const menuOpen = Boolean(menuAnchorElem);
   const completed = taskMeta.completed;
@@ -78,6 +79,21 @@ export default function TaskListItem({ taskMeta }: TaskListItemProps) {
   };
 
   const handleSaveEdit = async () => {
+    // 1. Check if the title changed
+    const titleChanged = taskMeta.task !== newValues.title;
+
+    // 2. Safely check if the date changed
+    const oldDateMs = taskMeta.dueDate ? taskMeta.dueDate.toMillis() : null;
+    const newDateMs = newValues.dueDate ? newValues.dueDate.valueOf() : null;
+    const dateChanged = oldDateMs !== newDateMs;
+
+    // 3. If nothing changed, just close the editor and exit
+    if (!titleChanged && !dateChanged) {
+      setIsEditing(false);
+      return;
+    }
+
+    // 4. Update the task
     if (updateTask) {
       await updateTask({ 
         ...taskMeta,
@@ -85,6 +101,7 @@ export default function TaskListItem({ taskMeta }: TaskListItemProps) {
         dueDate: newValues.dueDate ? Timestamp.fromDate(newValues.dueDate.toDate()) : taskMeta.dueDate
       });
     }
+    
     setIsEditing(false);
   };
 
@@ -140,7 +157,7 @@ export default function TaskListItem({ taskMeta }: TaskListItemProps) {
           mb: 1,
           border: 1.5,
           borderRadius: 2,
-          borderColor: 'divider',
+          borderColor: isEditing ? 'text.secondary' : 'divider',
           bgcolor: 'background.paper',
           overflow: 'hidden',
           transition: 'all 0.2s ',
@@ -152,8 +169,14 @@ export default function TaskListItem({ taskMeta }: TaskListItemProps) {
             edge="end" 
             onClick={isEditing ? handleSaveEdit : handleMenuOpen}
             color={isEditing ? "success" : "default"}
+            aria-label={isEditing ? "Save edits" : "Task options"}
           >
-            { isEditing ? <Check /> : <MoreHoriz /> }
+            { !isEditing ? 
+                <MoreHoriz />
+                : !updatingTask ?
+                    <Check />
+                    : <CircularProgress size={25} />
+            }
           </IconButton>
         }
       >

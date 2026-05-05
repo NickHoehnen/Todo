@@ -1,5 +1,12 @@
-// theme.ts
 import { createTheme, PaletteMode } from "@mui/material";
+
+// 1. Tell TypeScript about your new custom background properties
+declare module "@mui/material/styles" {
+  interface TypeBackground {
+    elevated: string;
+    accent: string;
+  }
+}
 
 export const getTheme = (mode: PaletteMode) =>
   createTheme({
@@ -44,6 +51,9 @@ export const getTheme = (mode: PaletteMode) =>
             background: {
               default: "#f8fafc", // slate-50
               paper: "#ffffff",
+              // NEW ACCENT BACKGROUNDS
+              elevated: "#ffffff", // Keeps standard white for light mode popups (relies on shadow)
+              accent: "#eff6ff",   // blue-50 (Great for a subtle tinted background area)
             },
             text: {
               primary: "#0f172a", // slate-900
@@ -56,7 +66,7 @@ export const getTheme = (mode: PaletteMode) =>
             primary: { 
               main: "#60a5fa", // blue-400
               light: "#93c5fd",
-              dark: "#3266d8", //a
+              dark: "#3266d8", 
               contrastText: "#0f172a",
             },
             secondary: { 
@@ -84,6 +94,9 @@ export const getTheme = (mode: PaletteMode) =>
             background: {
               default: "#070b1d", // slate-950 (very deep dark)
               paper: "#0f172a",   // slate-900
+              // NEW ACCENT BACKGROUNDS
+              elevated: "#1e293b", // slate-800 (Lighter slate for floating menus/popovers)
+              accent: "#172554",   // blue-950 (Deep tinted navy for special highlighted cards)
             },
             text: {
               primary: "#f1f5f9", // slate-100
@@ -131,6 +144,17 @@ export const getTheme = (mode: PaletteMode) =>
             backgroundImage: "none", 
           },
         },
+      },
+      // 2. Automatically apply the new elevated color to Menus
+      MuiMenu: {
+        styleOverrides: {
+          paper: {
+            backgroundColor: mode === "light" ? "#ffffff" : "#1e293b", // Matches background.elevated
+            boxShadow: mode === "light" 
+              ? "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)" // xl shadow
+              : "0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5)", // heavy dark shadow
+          }
+        }
       },
       MuiButton: {
         defaultProps: {
