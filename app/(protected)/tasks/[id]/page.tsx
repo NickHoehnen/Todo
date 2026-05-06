@@ -3,14 +3,13 @@
 import { 
   Typography, CircularProgress, Box, Skeleton, Stack, Avatar, 
   ButtonBase, MenuItem, Popper, Grow, Paper, ClickAwayListener, MenuList, 
-  Tooltip
+  Tooltip, Collapse, Chip, Divider
 } from "@mui/material"
 import { use, useEffect, useMemo, useRef, useState } from "react"
 import { useTasks } from "@/context/TasksContext"
 import { useUsers } from "@/context/UsersContext"
-import { Add, Person } from "@mui/icons-material"
+import { Add } from "@mui/icons-material"
 import { User } from "@/types/user"
-import { useAuth } from "@/context/AuthContext"
 
 interface TodosPageProps {
   params: Promise<{ id: string }>
@@ -18,9 +17,8 @@ interface TodosPageProps {
 
 export default function TodosPage({ params }: TodosPageProps) {
   const { id } = use(params); 
-  const { tasks, loading, assignUser } = useTasks(); 
+  const { tasks, loading, assignUser, assigningUser } = useTasks(); 
   const { users, usersLoading } = useUsers();
-  const { user } = useAuth();
 
   const [addOpen, setAddOpen] = useState(false); 
   const addAnchorEl = useRef<HTMLButtonElement>(null);
@@ -29,46 +27,31 @@ export default function TodosPage({ params }: TodosPageProps) {
 
   const isPastDue = useMemo(() => {
     if (!taskData || taskData.completed) return false;
-    return new Date() > taskData.dueDate.toDate();
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    return today > taskData.dueDate.toDate();
   }, [taskData]);
 
   const daysLeft = useMemo(() => {
     if(!taskData) return null;
     const today = Date.now();
     const diffInMs = taskData.dueDate.toDate().getTime() - today; 
-    const daysLeft = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
-    return daysLeft;
+    return Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
   }, [taskData]);
 
-  // Completed-green | PastDue-red | 1DayLeft-yellow | default-gray
-  const taskColor = 
-    (taskData?.completed) ?
-      "success.main"
-      : (isPastDue) ?
-          "error.main"
-          : (daysLeft && daysLeft <= 1) ?
-            "warning.main"
-            : "text.secondary";
-
-  const badgeSx = {
-    color: 'black',
-    px: 1.5,
-    borderRadius: 2,
-    display: 'inline-block',
-    mr: 1,
-    verticalAlign: 'middle',
-    fontWeight: 'bold', 
-    bgcolor: taskColor
-  };
+  const chipColor = 
+    taskData?.completed ? "success" 
+    : isPastDue ? "error" 
+    : (daysLeft !== null && daysLeft <= 1) ? "warning" 
+    : "default";
 
   const createdByUser = useMemo(() => {
     if(!users || !taskData) return null;
-    const u = users.find(thisUser => thisUser.id === taskData?.createdBy);
-    if(!u) return null;
-    return u;
+    return users.find(thisUser => thisUser.id === taskData?.createdBy) || null;
   }, [users, taskData]);
 
-  // FIX: Properly filtering users based on the task's assignedTo array
   const assignedUsers = useMemo(() => {
     if (!users || !taskData || !taskData.assignedTo) return undefined;
     return users.filter(user => taskData.assignedTo.includes(user.id));
@@ -84,29 +67,24 @@ export default function TodosPage({ params }: TodosPageProps) {
       if (!taskData) return "Error";
       if (taskData.completed) return "Completed";
       if (isPastDue) return "Past Due";
-      if(daysLeft === null) return "...";
-      return `${daysLeft} ${daysLeft > 1 ? "days" : "day"} left`;
+      if (daysLeft === null) return "...";
+      return `${daysLeft} ${daysLeft === 1 ? "day" : "days"} left`;
     },
-    [taskData, isPastDue]
+    [taskData, isPastDue, daysLeft]
   );
 
-  // 2. Complete the handleAssignUser function
   const handleAssignUser = async (user: User) => {
-    if (!taskData) return; // Safety check
-
+    if (!taskData) return;
     try {
-      // Call the context function we built earlier
       await assignUser(taskData, user);
     } catch (error) {
       console.error("Failed to assign user:", error);
-      // Optional: Add a toast/snackbar notification here to inform the user
     } finally {
-      // Close the menu whether the assignment succeeded or failed
       setAddOpen(false);
     }
   }
 
-  const handleToggle = () => {
+  const handleToggleAssignMenu = () => {
     setAddOpen((prevOpen) => !prevOpen);
   };
 
@@ -137,7 +115,7 @@ export default function TodosPage({ params }: TodosPageProps) {
     prevOpen.current = addOpen;
   }, [addOpen]);
 
-  if (loading || usersLoading) { // Also waiting for users to load
+  if (loading || usersLoading) { 
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}>
         <CircularProgress size={60} />
@@ -145,34 +123,49 @@ export default function TodosPage({ params }: TodosPageProps) {
     );
   }
 
-  if (!taskData) return <Typography variant="h6" sx={{ p: 4 }}>Task not found.</Typography>;
+  if (!taskData) return <Typography variant="h6" sx={{ p: 4, textAlign: 'center' }}>Task not found.</Typography>;
 
   return (
-    <Stack sx={{ p: 2, maxWidth: 600, mx: 'auto' }} spacing={1}>
+    <Stack sx={{ p: 3, maxWidth: 650, mx: 'auto' }} spacing={3}>
       
-      <Stack spacing={2} direction="row" sx={{ mb: 0 }} alignItems="center">
-        {/* Task title */}
-        <Typography variant="h3" component="h1" gutterBottom>
+      {/* Header Section */}
+      <Stack spacing={2} direction="row" alignItems="flex-start" justifyContent="space-between">
+        <Typography variant="h4" component="h1" fontWeight="bold">
           {taskData.task}
         </Typography>
-        {/* Completed status */}
-        <Typography variant="overline" sx={{ ...badgeSx }}>
-          {taskStatus}
-        </Typography>
+        <Chip 
+          label={taskStatus} 
+          color={chipColor} 
+          size="medium"
+          sx={{ fontWeight: 'bold', mt: 0.5 }} 
+        />
       </Stack>
 
-      <Typography>Created by: {createdByUser?.firstName} {createdByUser?.lastName}</Typography>
-      <Typography 
-        variant="h6" 
-        color="text.secondary" 
-        component="span" 
-        sx={{ verticalAlign: 'middle' }}
-      >
-        Due: {taskData.dueDate.toDate().toLocaleDateString()}
-      </Typography>
+      {/* Metadata Section */}
+      <Box sx={{ color: 'text.secondary' }}>
+        <Typography variant="body1">
+          <strong>Created by:</strong> {createdByUser?.firstName} {createdByUser?.lastName}
+        </Typography>
+        <Typography variant="body1">
+          <strong>Due:</strong> {taskData.dueDate.toDate().toLocaleDateString()}
+        </Typography>
+      </Box>
 
-      {/* Icons for assigned users */}
-      <Stack direction="row" alignItems="center" spacing={1}>
+      {/* Assignment Section */}
+      <Stack 
+        direction="row" 
+        alignItems="center" 
+        spacing={1.5} 
+        sx={{ 
+          py: 1.5, 
+          px: 2, 
+          borderRadius: 3, 
+          backgroundColor: 'background.paper', 
+          border: '1px solid',
+          borderColor: 'divider',
+          width: 'fit-content'
+        }}
+      >
         { assignedUsers === undefined
           ? <Stack direction="row" spacing={1}>
               <Skeleton variant="circular" width={40} height={40} />
@@ -180,64 +173,93 @@ export default function TodosPage({ params }: TodosPageProps) {
               <Skeleton variant="circular" width={40} height={40} />
             </Stack>
           : <Stack direction="row" spacing={1}>
-              {
-                assignedUsers.map(user => (
-                  <Tooltip key={user.id} title={user.email}>
-                    <Avatar key={user.id}>
-                      {/* <Person /> */}
-                      <Typography variant="subtitle2" fontWeight="bold">{user.firstName.charAt(0)} {user.lastName.charAt(0)}</Typography>
+              {assignedUsers.map((user) => (
+                <Collapse 
+                  key={user.id} 
+                  orientation="horizontal" 
+                  in={true} 
+                  timeout={300}
+                >
+                  <Tooltip title={`${user.firstName} ${user.lastName} (${user.email})`}>
+                    <Avatar sx={{ width: 40, height: 40, bgcolor: 'primary.main' }}>
+                      <Typography variant="subtitle2" fontWeight="bold">
+                        {user.firstName.charAt(0)}{user.lastName.charAt(0)}
+                      </Typography>
                     </Avatar>
                   </Tooltip>
-                ))
-              }
+                </Collapse>
+              ))}
             </Stack>
         }
         
         <Tooltip title="Assign new user">
           <ButtonBase 
             ref={addAnchorEl} 
-            sx={{ border: '2px solid', borderColor: 'divider', borderRadius: '50%', width: 40, height: 40 }} 
-            onClick={handleToggle}
+            sx={{ 
+              border: '2px dashed', 
+              borderColor: 'divider', 
+              borderRadius: '50%', 
+              width: 40, 
+              height: 40,
+              transition: 'all 0.2s',
+              '&:hover': { borderColor: 'primary.main', backgroundColor: 'action.hover' }
+            }} 
+            onClick={handleToggleAssignMenu}
+            disabled={assigningUser}
           >
-            <Add />
+            {assigningUser ? <CircularProgress size={20} /> : <Add color="action" />}
           </ButtonBase>
         </Tooltip>
 
         <ClickAwayListener onClickAway={handleClose}>
-        <Popper
-          open={addOpen}
-          anchorEl={addAnchorEl.current}
-          role={undefined}
-          placement="bottom-start"
-          transition
-          disablePortal
-        >
-          {({ TransitionProps, placement }) => (
-            <Grow
-              {...TransitionProps}
-              style={{
-                transformOrigin:
-                  placement === 'bottom-start' ? 'left top' : 'left bottom',
-              }}
-            >
-              <Paper sx={{ mt: 1, backgroundColor: 'background.elevated', pt: 1 }}>
-                <Typography fontWeight="bold" sx={{ px: 1, pl: 2, userSelect: "none" }}>Assign user</Typography>
-                <MenuList
-                  autoFocusItem={addOpen}
-                  id="composition-menu"
-                  aria-labelledby="composition-button"
-                  onKeyDown={handleListKeyDown}
-                >
-                  {unassignedUsers?.map(user => (
-                    <MenuItem key={user.id} sx={{ py: 1 }} onClick={() => handleAssignUser(user)}>
-                      <Typography variant="button">{user.firstName} {user.lastName}</Typography>
-                    </MenuItem>
-                  ))}
-                </MenuList>
-              </Paper>
-            </Grow>
-          )}
-        </Popper>
+          <Popper
+            open={addOpen}
+            anchorEl={addAnchorEl.current}
+            role={undefined}
+            placement="bottom-start"
+            transition
+            disablePortal
+            sx={{ zIndex: 1300 }}
+          >
+            {({ TransitionProps, placement }) => (
+              <Grow
+                {...TransitionProps}
+                style={{
+                  transformOrigin: placement === 'bottom-start' ? 'left top' : 'left bottom',
+                }}
+              >
+                <Paper elevation={4} sx={{ mt: 1, minWidth: 200, overflow: 'hidden' }}>
+                  <Box sx={{ px: 2, py: 1.5, bgcolor: 'background.default' }}>
+                    <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      Assign User
+                    </Typography>
+                  </Box>
+                  <Divider />
+                  <MenuList
+                    autoFocusItem={addOpen}
+                    id="composition-menu"
+                    aria-labelledby="composition-button"
+                    onKeyDown={handleListKeyDown}
+                    sx={{ p: 0 }}
+                  >
+                    {unassignedUsers && unassignedUsers.length > 0 ? (
+                      unassignedUsers.map(user => (
+                        <MenuItem key={user.id} sx={{ py: 1.5, px: 2 }} onClick={() => handleAssignUser(user)}>
+                          <Typography variant="body1">{user.firstName} {user.lastName}</Typography>
+                        </MenuItem>
+                      ))
+                    ) : (
+                      <MenuItem disabled sx={{ py: 2 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          No users to assign
+                        </Typography>
+                      </MenuItem>
+                    )}
+                  </MenuList>
+                </Paper>
+              </Grow>
+            )}
+          </Popper>
         </ClickAwayListener>
       </Stack>
     </Stack>

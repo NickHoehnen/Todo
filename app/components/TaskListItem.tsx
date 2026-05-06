@@ -33,13 +33,15 @@ export default function TaskListItem({ taskMeta }: TaskListItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [newValues, setNewValues] = useState<NewValuesType>({ title: '', dueDate: null });
 
-  const { deleteTask, markComplete, markIncomplete, updateTask, updatingTask } = useTasks(); 
+  const { deleteTask, markComplete, markIncomplete, updateTask, updatingTask } = useTasks();
   
   const menuOpen = Boolean(menuAnchorElem);
   const completed = taskMeta.completed;
   const hasDueDate = !!taskMeta.dueDate;
   
-  const isPastDue = hasDueDate && !completed && taskMeta.dueDate.toDate() < new Date();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const isPastDue = hasDueDate && !completed && taskMeta.dueDate.toDate() < today;
 
   const handleMenuOpen = (e: React.MouseEvent<HTMLElement>) => {
     e.preventDefault();
@@ -109,7 +111,9 @@ export default function TaskListItem({ taskMeta }: TaskListItemProps) {
   if (completed) {
     statusLabel = "Completed";
   } else if (hasDueDate) {
-    statusLabel = `${isPastDue ? "Overdue: " : "Due: "} ${taskMeta.dueDate.toDate().toDateString()}`;
+    const dueDateConverted = taskMeta.dueDate.toDate();
+    if(dueDateConverted.getDate() === today.getDate()) statusLabel = "Due: Today";
+    else statusLabel = `${isPastDue ? "Overdue: " : "Due: "} ${taskMeta.dueDate.toDate().toDateString()}`;
   }
 
   const handleInputClick = (e: React.MouseEvent) => {
