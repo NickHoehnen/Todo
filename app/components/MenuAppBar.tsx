@@ -72,7 +72,7 @@ export default function MenuAppBar() {
           </Typography>
 
           {user && (
-            <div>
+            <Box>
               <IconButton
                 size="large"
                 aria-label="account of current user"
@@ -92,14 +92,14 @@ export default function MenuAppBar() {
                 open={Boolean(anchorEl)}
                 onClose={handleClose}
               >
-                <Typography sx={{ px: 2, py: 1, borderBottom: 1, borderColor: 'divider', cursor: 'default', userSelect: 'none', fontSize: '0.875rem' }}>
+                <Typography sx={{ px: 2, pb: 1, borderBottom: 1, borderColor: 'divider', cursor: 'default', userSelect: 'none', fontSize: '0.875rem' }}>
                     {auth.currentUser?.email}
                 </Typography>
                 <MenuItem onClick={handleClose} component={Link} href='/profile'>Profile</MenuItem>
                 <MenuItem onClick={handleClose}>My account</MenuItem>
                 <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>Logout</MenuItem>
               </Menu>
-            </div>
+            </Box>
           )}
         </Toolbar>
       </AppBar>

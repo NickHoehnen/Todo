@@ -21,9 +21,9 @@ export default function AuthLayout({
       })}
     >
       <Paper 
-        elevation={12} 
+        elevation={8} 
         sx={{ 
-          p: 3, 
+          p: 4, 
           borderRadius: 3, 
           width: '100%', 
           maxWidth: '450px',

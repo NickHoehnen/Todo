@@ -182,7 +182,7 @@ export default function TodosPage({ params }: TodosPageProps) {
                 >
                   <Tooltip title={`${user.firstName} ${user.lastName} (${user.email})`}>
                     <Avatar sx={{ width: 40, height: 40, bgcolor: 'primary.main' }}>
-                      <Typography variant="subtitle2" fontWeight="bold">
+                      <Typography variant="subtitle2" fontWeight="bold" lineHeight={1}>
                         {user.firstName.charAt(0)}{user.lastName.charAt(0)}
                       </Typography>
                     </Avatar>

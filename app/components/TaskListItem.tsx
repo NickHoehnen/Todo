@@ -8,7 +8,7 @@ import {
   CircularProgress
 } from "@mui/material";
 import { Task } from "@/types/Task";
-import { MoreHoriz, Person, Edit, Delete, Check, DoNotDisturb } from "@mui/icons-material";
+import { MoreHoriz, Person, Edit, Delete, Check, DoNotDisturb, Assignment } from "@mui/icons-material";
 import Link from "next/link";
 import { useState } from "react";
 import { useTasks } from "@/context/TasksContext";
@@ -192,7 +192,7 @@ export default function TaskListItem({ taskMeta }: TaskListItemProps) {
         >
           <ListItemAvatar>
             <Avatar sx={{ bgcolor: 'primary.light', color: 'primary.dark' }}>
-              <Person />
+              <Assignment />
             </Avatar>
           </ListItemAvatar>
           

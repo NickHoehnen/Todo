@@ -1,5 +1,6 @@
 'use client'
-import { Box, Button, Stack, Typography } from "@mui/material";
+
+import { Box, Button, Stack, Typography, Alert, CircularProgress, Paper } from "@mui/material";
 import { applyActionCode, sendEmailVerification } from "firebase/auth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -7,33 +8,28 @@ import { auth } from "@/lib/firebase";
 
 export default function EmailStatus() {
   const searchParams = useSearchParams();
-  const [status, setStatus] = useState("Awaiting verification");
-  const [messageColor, setMessageColor] = useState({ text: 'warning.dark', background: 'warning.light'});
-  const [threeDots, setThreeDots] = useState("...");
-  const [resending, setResending] = useState(false);
   const router = useRouter();
 
-  // Optimized animation: remove threeDots from dependency to avoid resetting interval
-  useEffect(() => {    
-    const interval = setInterval(() => {
-      setThreeDots(prev => prev === "..." ? "." : prev + ".");
-    }, 500);
-    return () => clearInterval(interval);
-  }, []);
+  const [status, setStatus] = useState("Awaiting verification...");
+  const [severity, setSeverity] = useState<"info" | "success" | "error">("info");
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [resending, setResending] = useState(false);
 
   const handleResendEmail = async () => {
-    if(!auth.currentUser) return;
+    if (!auth.currentUser) return;
     setResending(true);
     try {
       const actionCodeSettings = {
-        // Updated to your hosted URL for production readiness
         url: 'https://todoappbackend1--todoapp-c1bf4.us-east5.hosted.app/dashboard',
         handleCodeInApp: true,
       };
       await sendEmailVerification(auth.currentUser, actionCodeSettings);
+      setSeverity("info");
       setStatus("New link sent! Please check your inbox.");
     } catch (err) {
       console.error(err);
+      setSeverity("error");
+      setStatus("Failed to resend email. Please try again later.");
     } finally {
       setResending(false);
     }
@@ -43,48 +39,75 @@ export default function EmailStatus() {
     const actionCode = searchParams.get('oobCode');
 
     if (actionCode) {
+      setIsVerifying(true);
+      setStatus("Verifying your email...");
+      setSeverity("info");
+      
       applyActionCode(auth, actionCode)
         .then(() => {
-          setMessageColor({ text: 'success.dark', background: 'success.light'});
-          setStatus("Verification successful! Redirecting...");
+          setSeverity("success");
+          setStatus("Verification successful! Redirecting to dashboard...");
           setTimeout(() => router.replace('/dashboard'), 2000);
         })
         .catch((error) => {
-          setMessageColor({ text: 'error.dark', background: 'error.light'});
-          setStatus(`Verification failed: ${error.message}`);
+          setSeverity("error");
+          // Catch the ugly Firebase error and make it user-friendly
+          if (error.code === 'auth/invalid-action-code') {
+            setStatus("This link has expired or has already been used.");
+          } else {
+            setStatus(`Verification failed: ${error.message}`);
+          }
+        })
+        .finally(() => {
+          setIsVerifying(false);
         });
     }
   }, [searchParams, router]);
 
   return (
-    <Stack spacing={1.5}>
-      <Typography variant="h4" align="center">Verify Email</Typography>
-      <Typography variant="body1" align="center">Check your email for a verification link</Typography>
+    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 3, minHeight: '20vh' }}>
+      <Stack spacing={3} alignItems="center" textAlign="center">
+        
+        {/* Header */}
+        <Box>
+          <Typography variant="h5" component="h1" fontWeight="bold" gutterBottom>
+            Email Verification
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {severity === 'success' 
+              ? "Thank you for verifying your account." 
+              : "Check your email for a verification link to continue."}
+          </Typography>
+        </Box>
 
-      <Typography 
-        variant="overline" 
-        align="center" 
-        color={messageColor.text}
-        sx={{ 
-          backgroundColor: messageColor.background, 
-          borderRadius: 2,
-          display: 'flex',
-          justifyContent: 'center',
-          minHeight: '30px',
-          px: 2
-        }}
-      >
-        {status}
-        {status === "Awaiting verification" && (
-          <Box sx={{ width: '1.5em', textAlign: 'left', ml: .2 }}>
-            {threeDots}
-          </Box>
+        {/* Status Alert */}
+        <Alert 
+          severity={severity} 
+          icon={isVerifying ? <CircularProgress size={20} color="inherit" /> : undefined}
+          sx={{ 
+            width: '100%', 
+            alignItems: 'center', 
+            textAlign: 'left',
+            '& .MuiAlert-message': { width: '100%' } 
+          }}
+        >
+          {status}
+        </Alert>
+
+        {/* Resend Action */}
+        {severity !== 'success' && (
+          <Button 
+            variant="text" 
+            color="primary" 
+            disabled={resending || isVerifying} 
+            onClick={handleResendEmail}
+            sx={{ textTransform: 'none', fontWeight: 'bold' }}
+          >
+            {resending ? "Sending..." : "Resend Verification Email"}
+          </Button>
         )}
-      </Typography>
 
-      <Button variant="text" disabled={resending} onClick={handleResendEmail}>
-        {resending ? "Sending..." : "Resend Email"}
-      </Button>
-    </Stack>
+      </Stack> 
+    </Box>
   );
 }

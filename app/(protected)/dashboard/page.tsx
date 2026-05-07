@@ -99,7 +99,7 @@ export default function Dashboard() {
   }
 
   return (
-    <Box sx={{ px: { xs: 2, md: 5 }, py: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+    <Box sx={{ px: { xs: .5, md: 5 }, py: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
     
       <Box sx={{ width: { xs: '100%', md: '80%', lg: '45rem' } }}>
         <Typography variant="h4" component="h1" align="left" sx={{ mb: 3, fontWeight: 'bold' }}>
@@ -137,6 +137,7 @@ export default function Dashboard() {
               whiteSpace: 'nowrap',
               minWidth: isMobile ? 'auto' : undefined
             }}
+            disableFocusRipple
           >
             <Add sx={{ mr: isMobile ? 0 : 1 }} />
             {!isMobile && "Create Task"}
@@ -176,7 +177,7 @@ export default function Dashboard() {
 
             return (
               <Collapse key={dueDate}> 
-                <Box sx={{ mb: 2 }}>
+                <Box sx={{ mb: .5 }}>
                   {/* Due Date Header */}
                   <ButtonBase 
                     onClick={() => toggleDate(dueDate)} 
@@ -185,7 +186,7 @@ export default function Dashboard() {
                       display: 'flex', 
                       justifyContent: 'space-between', 
                       width: '100%', 
-                      px: 1.5, 
+                      px: 2, 
                       py: 1,
                       borderRadius: 2,
                       transition: 'all 0.2s',
@@ -222,7 +223,7 @@ export default function Dashboard() {
                   
                   {/* Tasks List */}
                   <Collapse in={isOpen}> 
-                    <Box sx={{ mt: 1, pl: 1.5 }}>
+                    <Box sx={{ mt: 1, px: 1 }}>
                       <TransitionGroup>
                         {groupTasks.map(task => (
                           <Collapse key={task.id}>
