@@ -126,10 +126,10 @@ export default function TodosPage({ params }: TodosPageProps) {
   if (!taskData) return <Typography variant="h6" sx={{ p: 4, textAlign: 'center' }}>Task not found.</Typography>;
 
   return (
-    <Stack sx={{ p: 3, maxWidth: 650, mx: 'auto' }} spacing={3}>
+    <Stack sx={{ maxWidth: 650, mx: 'auto' }} spacing={3}>
       
       {/* Header Section */}
-      <Stack spacing={2} direction="row" alignItems="flex-start" justifyContent="space-between">
+      <Stack spacing={2} direction="row" alignItems="center" justifyContent="space-between">
         <Typography variant="h4" component="h1" fontWeight="bold">
           {taskData.task}
         </Typography>

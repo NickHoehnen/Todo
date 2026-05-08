@@ -3,7 +3,8 @@
 import { 
   Box, Button, CircularProgress, IconButton, Stack, TextField, 
   Typography, InputAdornment, useMediaQuery, Collapse, ButtonBase, 
-  Switch, FormControlLabel, Chip
+  Switch, FormControlLabel, Chip,
+  Fade
 } from "@mui/material";
 import { useEffect, useState, useMemo, useRef } from "react";
 import { Add, Clear, KeyboardArrowDown, Search } from "@mui/icons-material";
@@ -99,7 +100,7 @@ export default function Dashboard() {
   }
 
   return (
-    <Box sx={{ px: { xs: .5, md: 5 }, py: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+    <Box sx={{ px: { xs: 0, md: 5 }, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
     
       <Box sx={{ width: { xs: '100%', md: '80%', lg: '45rem' } }}>
         <Typography variant="h4" component="h1" align="left" sx={{ mb: 3, fontWeight: 'bold' }}>
@@ -172,12 +173,12 @@ export default function Dashboard() {
         <TransitionGroup>
           {Object.entries(filteredTasksByDate).map(([dueDate, groupTasks]) => {
             const isToday = dueDate === todayStr;
-            // A date is open if: searching, it's manually expanded, OR it's Today and we haven't auto-expanded yet
             const isOpen = searchTerm !== "" || expandedDates.has(dueDate);
 
             return (
               <Collapse key={dueDate}> 
                 <Box sx={{ mb: .5 }}>
+                  
                   {/* Due Date Header */}
                   <ButtonBase 
                     onClick={() => toggleDate(dueDate)} 
@@ -222,17 +223,20 @@ export default function Dashboard() {
                   </ButtonBase>
                   
                   {/* Tasks List */}
-                  <Collapse in={isOpen}> 
+                  <Collapse in={isOpen} unmountOnExit> 
                     <Box sx={{ mt: 1, px: 1 }}>
                       <TransitionGroup>
                         {groupTasks.map(task => (
-                          <Collapse key={task.id}>
-                            <TaskListItem taskMeta={task} />
-                          </Collapse>
+                          <Fade key={task.id}>
+                            <Box mb={1}> 
+                              <TaskListItem taskMeta={task} />
+                            </Box>
+                          </Fade>
                         ))}
                       </TransitionGroup>
                     </Box>
                   </Collapse>
+                  
                 </Box>
               </Collapse>
             );

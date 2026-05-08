@@ -44,8 +44,8 @@ export default function Layout({ children }: { children: ReactNode }) {
             flexGrow: 1, 
             overflowY: 'auto', 
             WebkitOverflowScrolling: 'touch', 
-            py: 1,
-            px: 1,
+            py: 1.5,
+            px: 1.5,
             bgcolor: 'background.paper',
           }}
         >

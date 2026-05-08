@@ -10,7 +10,7 @@ import {
 import { Task } from "@/types/Task";
 import { MoreHoriz, Person, Edit, Delete, Check, DoNotDisturb, Assignment } from "@mui/icons-material";
 import Link from "next/link";
-import { useState } from "react";
+import { memo, useState } from "react";
 import { useTasks } from "@/context/TasksContext";
 import { Dayjs } from "dayjs";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
@@ -27,7 +27,7 @@ interface NewValuesType {
   dueDate: Dayjs | null;
 }
 
-export default function TaskListItem({ taskMeta }: TaskListItemProps) {
+function TaskListItem({ taskMeta }: TaskListItemProps) {
   const [menuAnchorElem, setMenuAnchorElem] = useState<HTMLElement | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -271,3 +271,5 @@ export default function TaskListItem({ taskMeta }: TaskListItemProps) {
     </>
   );
 }
+
+export default memo(TaskListItem);
